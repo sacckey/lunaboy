@@ -2,7 +2,7 @@
   "is-main": true,
   "import": [
     {
-      "path": "sacckey/lunaboy",
+      "path": "sacckey/lunaboy/lib",
       "alias": "lib"
     }
   ]
