@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "sacckey/lunaboy/lib"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn run_emulator() -> Unit raise
+
+// Errors
+
+// Types and methods
+type Cond
+pub impl @debug.Debug for Cond
+
+type Direct8
+pub impl @debug.Debug for Direct8
+
+type Indirect
+pub impl @debug.Debug for Indirect
+
+type Mode
+pub impl Eq for Mode
+
+type Reg16
+pub impl @debug.Debug for Reg16
+
+type Reg8
+pub impl @debug.Debug for Reg8
+
+type Registers
+pub impl Default for Registers
+pub impl @debug.Debug for Registers
+
+type StackFrame
+pub impl Default for StackFrame
+pub impl Show for StackFrame
+
+// Type aliases
+
+// Traits
+
