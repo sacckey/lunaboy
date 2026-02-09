@@ -37,7 +37,7 @@ fn Emulator::run(self : Self) -> Unit {
   while true {
     self.cpu.emulate_cycle(self.bus)
     if self.bus.ppu.emulate_cycle() {
-      self.lcd.draw(self.bus.ppu.pixel_buffer())
+      self.lcd.draw(self.bus.ppu.buffer)
     }
   }
 }

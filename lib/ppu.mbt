@@ -78,7 +78,7 @@ priv struct Ppu {
   mut wx : U8
   vram : FixedArray[U8]
   oam : FixedArray[U8]
-  buffer : FixedArray[U8]
+  buffer : FixedArray[UInt]
 }
 
 ///|
@@ -99,7 +99,7 @@ fn Ppu::new() -> Ppu {
     wx: 0,
     vram: FixedArray::make(0x2000, 0),
     oam: FixedArray::make(0xA0, 0),
-    buffer: FixedArray::make(LCD_WIDTH * LCD_HEIGHT, 0xff),
+    buffer: FixedArray::make(LCD_WIDTH * LCD_HEIGHT, 0xffffffff),
   }
 }
 
@@ -209,10 +209,10 @@ fn Ppu::render_bg(self : Self) -> Unit {
     let pixel = self.get_pixel_from_tile(tile_idx, y & 7, x & 7).to_int()
     self.buffer[LCD_WIDTH * self.ly.to_int() + i] = match
       (self.bgp >> (pixel << 1)) & 0b11 {
-      0b00 => 0xFF
-      0b01 => 0xAA
-      0b10 => 0x55
-      _ => 0x00
+      0b00 => 0xFFFFFFFF
+      0b01 => 0xFFAAAAAA
+      0b10 => 0xFF555555
+      _ => 0xFF000000
     }
   }
 }
@@ -274,12 +274,4 @@ fn Ppu::emulate_cycle(self : Self) -> Bool {
   }
 
   ret
-}
-
-///|
-fn Ppu::pixel_buffer(self : Self) -> FixedArray[UInt] {
-  self.buffer.map(u8 => {
-    let u8 = u8.to_uint()
-    (0xFF << 24) | (u8 << 16) | (u8 << 8) | u8
-  })
 }
