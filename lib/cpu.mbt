@@ -38,3 +38,8 @@ fn Cpu::new() -> Self {
 fn Cpu::emulate_cycle(self : Self, bus : Bus) -> Unit {
   self.decode(bus)
 }
+
+///|
+fn Cpu::current_state(self : Self) -> Ref[StackFrame] {
+  Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+}

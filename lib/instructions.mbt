@@ -5,7 +5,7 @@ fn Cpu::nop(self : Self, bus : Bus) -> Unit {
 
 ///|
 fn Cpu::ld(self : Self, bus : Bus, dst : IO8Type, src : IO8Type) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -49,7 +49,7 @@ fn Cpu::cp(self : Self, bus : Bus, src : IO8Type) -> Unit {
 
 ///|
 fn Cpu::inc(self : Self, bus : Bus, src : IO8Type) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -82,7 +82,7 @@ fn Cpu::inc(self : Self, bus : Bus, src : IO8Type) -> Unit {
 
 ///|
 fn Cpu::ld16(self : Self, bus : Bus, dst : IO16Type, src : IO16Type) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -115,7 +115,7 @@ fn Cpu::ld16(self : Self, bus : Bus, dst : IO16Type, src : IO16Type) -> Unit {
 
 ///|
 fn Cpu::inc16(self : Self, bus : Bus, src : IO16Type) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -148,7 +148,7 @@ fn Cpu::inc16(self : Self, bus : Bus, src : IO16Type) -> Unit {
 
 ///|
 fn Cpu::dec(self : Self, bus : Bus, src : IO8Type) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -181,7 +181,7 @@ fn Cpu::dec(self : Self, bus : Bus, src : IO8Type) -> Unit {
 
 ///|
 fn Cpu::dec16(self : Self, bus : Bus, src : IO16Type) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -214,7 +214,7 @@ fn Cpu::dec16(self : Self, bus : Bus, src : IO16Type) -> Unit {
 
 ///|
 fn Cpu::rl(self : Self, bus : Bus, src : IO8Type) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -259,7 +259,7 @@ fn Cpu::bit(self : Self, bus : Bus, bit : Int, src : IO8Type) -> Unit {
 
 ///|
 fn Cpu::push16(self : Self, bus : Bus, val : U16) -> Unit? {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       stackRef.val.step = 1
@@ -288,7 +288,7 @@ fn Cpu::push16(self : Self, bus : Bus, val : U16) -> Unit? {
 
 ///|
 fn Cpu::push(self : Self, bus : Bus, src : Reg16) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       stackRef.val.u16 = self.read16(bus, IO16Type::Reg16(src)).unwrap()
@@ -315,7 +315,7 @@ fn Cpu::push(self : Self, bus : Bus, src : Reg16) -> Unit {
 
 ///|
 fn Cpu::pop16(self : Self, bus : Bus) -> U16? {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       stackRef.val.u8 = bus.read(self.regs.sp)
@@ -348,7 +348,7 @@ fn Cpu::pop(self : Self, bus : Bus, dst : Reg16) -> Unit {
 
 ///|
 fn Cpu::jr(self : Self, bus : Bus) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -378,7 +378,7 @@ fn Cpu::cond(self : Self, cond : Cond) -> Bool {
 
 ///|
 fn Cpu::jr_c(self : Self, bus : Bus, c : Cond) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -404,7 +404,7 @@ fn Cpu::jr_c(self : Self, bus : Bus, c : Cond) -> Unit {
 
 ///|
 fn Cpu::call(self : Self, bus : Bus) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
@@ -434,7 +434,7 @@ fn Cpu::call(self : Self, bus : Bus) -> Unit {
 
 ///|
 fn Cpu::ret(self : Self, bus : Bus) -> Unit {
-  let stackRef = Ref::new(self.ctx.state_stack[self.ctx.state_idx])
+  let stackRef = self.current_state()
   match stackRef.val.step {
     0 => {
       self.ctx.state_idx += 1
