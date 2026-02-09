@@ -6,51 +6,22 @@ import {
 }
 
 // Values
-pub fn gb_main() -> Unit raise
+pub fn run_emulator() -> Unit raise
 
 // Errors
 
 // Types and methods
-type Bootrom
-
 type Cond
 pub impl @debug.Debug for Cond
-
-type Cpu
-
-type Ctx
-
-type Direct16
-pub impl @debug.Debug for Direct16
 
 type Direct8
 pub impl @debug.Debug for Direct8
 
-type GameBoy
-
-type HRam
-
-type IO16Type
-
-type IO8Type
-
-type Imm16
-pub impl @debug.Debug for Imm16
-
-type Imm8
-pub impl @debug.Debug for Imm8
-
 type Indirect
 pub impl @debug.Debug for Indirect
 
-type Lcd
-
 type Mode
 pub impl Eq for Mode
-
-type Peripherals
-
-type Ppu
 
 type Reg16
 pub impl @debug.Debug for Reg16
@@ -66,12 +37,7 @@ type StackFrame
 pub impl Default for StackFrame
 pub impl Show for StackFrame
 
-type WRam
-
 // Type aliases
 
 // Traits
-trait IO16
-
-trait IO8
 
