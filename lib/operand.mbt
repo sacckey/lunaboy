@@ -135,19 +135,20 @@ impl IO8 for Cpu with read8(self, bus, src) {
       let state = self.current_state()
       match state.val.step {
         0 => {
-          self.ctx.state_idx += 1
-          ignore(self.read8(bus, IO8Type::Imm8))
-          self.ctx.state_idx -= 1
+          ignore(self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }))
           state.val.step = 1
           None
         }
         1 => {
-          self.ctx.state_idx += 1
-          let lo = self.read8(bus, IO8Type::Imm8).unwrap()
+          let lo = self
+            .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+            .unwrap()
           match dir {
             Direct8::D => {
               state.val.u8 = lo
-              ignore(self.read8(bus, IO8Type::Imm8))
+              ignore(
+                self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }),
+              )
               state.val.step = 2
             }
             Direct8::DFF => {
@@ -155,13 +156,12 @@ impl IO8 for Cpu with read8(self, bus, src) {
               state.val.step = 3
             }
           }
-          self.ctx.state_idx -= 1
           None
         }
         2 => {
-          self.ctx.state_idx += 1
-          let hi = self.read8(bus, IO8Type::Imm8).unwrap()
-          self.ctx.state_idx -= 1
+          let hi = self
+            .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+            .unwrap()
           state.val.u8 = bus.read((hi.to_u16() << 8) | state.val.u8.to_u16())
           state.val.step = 3
           None
@@ -226,19 +226,20 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
       let state = self.current_state()
       match state.val.step {
         0 => {
-          self.ctx.state_idx += 1
-          ignore(self.read8(bus, IO8Type::Imm8))
-          self.ctx.state_idx -= 1
+          ignore(self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }))
           state.val.step = 1
           None
         }
         1 => {
-          self.ctx.state_idx += 1
-          let lo = self.read8(bus, IO8Type::Imm8).unwrap()
+          let lo = self
+            .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+            .unwrap()
           match dir {
             Direct8::D => {
               state.val.u8 = lo
-              ignore(self.read8(bus, IO8Type::Imm8))
+              ignore(
+                self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }),
+              )
               state.val.step = 2
             }
             Direct8::DFF => {
@@ -246,13 +247,12 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
               state.val.step = 3
             }
           }
-          self.ctx.state_idx -= 1
           None
         }
         2 => {
-          self.ctx.state_idx += 1
-          let hi = self.read8(bus, IO8Type::Imm8).unwrap()
-          self.ctx.state_idx -= 1
+          let hi = self
+            .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+            .unwrap()
           bus.write((hi.to_u16() << 8) | state.val.u8.to_u16(), val)
           state.val.step = 3
           None
@@ -284,25 +284,23 @@ impl IO16 for Cpu with read16(self, bus, src) {
       let state = self.current_state()
       match state.val.step {
         0 => {
-          self.ctx.state_idx += 1
-          ignore(self.read8(bus, IO8Type::Imm8))
-          self.ctx.state_idx -= 1
+          ignore(self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }))
           state.val.step = 1
           None
         }
         1 => {
-          self.ctx.state_idx += 1
-          let lo = self.read8(bus, IO8Type::Imm8).unwrap()
-          ignore(self.read8(bus, IO8Type::Imm8))
-          self.ctx.state_idx -= 1
+          let lo = self
+            .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+            .unwrap()
+          ignore(self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }))
           state.val.u8 = lo
           state.val.step = 2
           None
         }
         2 => {
-          self.ctx.state_idx += 1
-          let hi = self.read8(bus, IO8Type::Imm8).unwrap()
-          self.ctx.state_idx -= 1
+          let hi = self
+            .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+            .unwrap()
           state.val.step = 0
           Some((hi.to_u16() << 8) | state.val.u8.to_u16())
         }
@@ -331,24 +329,22 @@ impl IO16 for Cpu with write16(self, bus, dst, val) {
       let state = self.current_state()
       match state.val.step {
         0 => {
-          self.ctx.state_idx += 1
-          ignore(self.read8(bus, IO8Type::Imm8))
-          self.ctx.state_idx -= 1
+          ignore(self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }))
           state.val.step = 1
           None
         }
         1 => {
-          self.ctx.state_idx += 1
-          state.val.u8 = self.read8(bus, IO8Type::Imm8).unwrap()
-          ignore(self.read8(bus, IO8Type::Imm8))
-          self.ctx.state_idx -= 1
+          state.val.u8 = self
+            .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+            .unwrap()
+          ignore(self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }))
           state.val.step = 2
           None
         }
         2 => {
-          self.ctx.state_idx += 1
-          let hi = self.read8(bus, IO8Type::Imm8).unwrap()
-          self.ctx.state_idx -= 1
+          let hi = self
+            .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+            .unwrap()
           state.val.u16 = (hi.to_u16() << 8) | state.val.u8.to_u16()
           bus.write(state.val.u16, val.to_u8())
           state.val.step = 3

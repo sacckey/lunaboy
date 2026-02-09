@@ -43,3 +43,11 @@ fn Cpu::emulate_cycle(self : Self, bus : Bus) -> Unit {
 fn Cpu::current_state(self : Self) -> Ref[StackFrame] {
   Ref::new(self.ctx.state_stack[self.ctx.state_idx])
 }
+
+///|
+fn[T] Cpu::with_child_state(self : Self, f : () -> T) -> T {
+  self.ctx.state_idx += 1
+  let ret = f()
+  self.ctx.state_idx -= 1
+  ret
+}
