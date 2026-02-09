@@ -1,4 +1,4 @@
 import {
   "moonbitlang/x/fs",
-  "Kaida-Amethyst/sdl3/lib" @sdl
+  "Kaida-Amethyst/sdl3/lib" @sdl,
 }

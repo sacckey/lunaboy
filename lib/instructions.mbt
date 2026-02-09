@@ -4,12 +4,7 @@ fn Cpu::nop(self : Self, bus : Bus) -> Unit {
 }
 
 ///|
-fn Cpu::ld(
-  self : Self,
-  bus : Bus,
-  dst : IO8Type,
-  src : IO8Type,
-) -> Unit {
+fn Cpu::ld(self : Self, bus : Bus, dst : IO8Type, src : IO8Type) -> Unit {
   let stackRef = Ref::new(self.ctx.stack_array[self.ctx.sp])
   match stackRef.val.step {
     0 => {
@@ -86,12 +81,7 @@ fn Cpu::inc(self : Self, bus : Bus, src : IO8Type) -> Unit {
 }
 
 ///|
-fn Cpu::ld16(
-  self : Self,
-  bus : Bus,
-  dst : IO16Type,
-  src : IO16Type,
-) -> Unit {
+fn Cpu::ld16(self : Self, bus : Bus, dst : IO16Type, src : IO16Type) -> Unit {
   let stackRef = Ref::new(self.ctx.stack_array[self.ctx.sp])
   match stackRef.val.step {
     0 => {
