@@ -85,24 +85,24 @@ impl IO8 for Cpu with read8(self, bus, src) {
         },
       )
     IO8Type::Imm8 => {
-      let stackRef = self.current_state()
-      match stackRef.val.step {
+      let state = self.current_state()
+      match state.val.step {
         0 => {
-          stackRef.val.u8 = bus.read(self.regs.pc)
-          stackRef.val.step = 1
+          state.val.u8 = bus.read(self.regs.pc)
+          state.val.step = 1
           self.regs.pc = self.regs.pc + 1
           None
         }
         1 => {
-          stackRef.val.step = 0
-          Some(stackRef.val.u8)
+          state.val.step = 0
+          Some(state.val.u8)
         }
         _ => panic()
       }
     }
     IO8Type::Indirect(ind) => {
-      let stackRef = self.current_state()
-      match stackRef.val.step {
+      let state = self.current_state()
+      match state.val.step {
         0 => {
           let u8 = match ind {
             BC => bus.read(self.regs.bc())
@@ -120,25 +120,25 @@ impl IO8 for Cpu with read8(self, bus, src) {
               bus.read(addr)
             }
           }
-          stackRef.val.u8 = u8
-          stackRef.val.step = 1
+          state.val.u8 = u8
+          state.val.step = 1
           None
         }
         1 => {
-          stackRef.val.step = 0
-          Some(stackRef.val.u8)
+          state.val.step = 0
+          Some(state.val.u8)
         }
         _ => panic()
       }
     }
     IO8Type::Direct8(dir) => {
-      let stackRef = self.current_state()
-      match stackRef.val.step {
+      let state = self.current_state()
+      match state.val.step {
         0 => {
           self.ctx.state_idx += 1
           ignore(self.read8(bus, IO8Type::Imm8))
           self.ctx.state_idx -= 1
-          stackRef.val.step = 1
+          state.val.step = 1
           None
         }
         1 => {
@@ -146,13 +146,13 @@ impl IO8 for Cpu with read8(self, bus, src) {
           let lo = self.read8(bus, IO8Type::Imm8).unwrap()
           match dir {
             Direct8::D => {
-              stackRef.val.u8 = lo
+              state.val.u8 = lo
               ignore(self.read8(bus, IO8Type::Imm8))
-              stackRef.val.step = 2
+              state.val.step = 2
             }
             Direct8::DFF => {
-              stackRef.val.u8 = bus.read(0xFF00 | lo.to_u16())
-              stackRef.val.step = 3
+              state.val.u8 = bus.read(0xFF00 | lo.to_u16())
+              state.val.step = 3
             }
           }
           self.ctx.state_idx -= 1
@@ -162,15 +162,13 @@ impl IO8 for Cpu with read8(self, bus, src) {
           self.ctx.state_idx += 1
           let hi = self.read8(bus, IO8Type::Imm8).unwrap()
           self.ctx.state_idx -= 1
-          stackRef.val.u8 = bus.read(
-            (hi.to_u16() << 8) | stackRef.val.u8.to_u16(),
-          )
-          stackRef.val.step = 3
+          state.val.u8 = bus.read((hi.to_u16() << 8) | state.val.u8.to_u16())
+          state.val.step = 3
           None
         }
         3 => {
-          stackRef.val.step = 0
-          Some(stackRef.val.u8)
+          state.val.step = 0
+          Some(state.val.u8)
         }
         _ => panic()
       }
@@ -195,8 +193,8 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
       )
     IO8Type::Imm8 => panic()
     IO8Type::Indirect(ind) => {
-      let stackRef = self.current_state()
-      match stackRef.val.step {
+      let state = self.current_state()
+      match state.val.step {
         0 => {
           match ind {
             BC => bus.write(self.regs.bc(), val)
@@ -214,24 +212,24 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
               bus.write(addr, val)
             }
           }
-          stackRef.val.step = 1
+          state.val.step = 1
           None
         }
         1 => {
-          stackRef.val.step = 0
+          state.val.step = 0
           Some(())
         }
         _ => panic()
       }
     }
     IO8Type::Direct8(dir) => {
-      let stackRef = self.current_state()
-      match stackRef.val.step {
+      let state = self.current_state()
+      match state.val.step {
         0 => {
           self.ctx.state_idx += 1
           ignore(self.read8(bus, IO8Type::Imm8))
           self.ctx.state_idx -= 1
-          stackRef.val.step = 1
+          state.val.step = 1
           None
         }
         1 => {
@@ -239,13 +237,13 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
           let lo = self.read8(bus, IO8Type::Imm8).unwrap()
           match dir {
             Direct8::D => {
-              stackRef.val.u8 = lo
+              state.val.u8 = lo
               ignore(self.read8(bus, IO8Type::Imm8))
-              stackRef.val.step = 2
+              state.val.step = 2
             }
             Direct8::DFF => {
               bus.write(0xFF00 | lo.to_u16(), val)
-              stackRef.val.step = 3
+              state.val.step = 3
             }
           }
           self.ctx.state_idx -= 1
@@ -255,12 +253,12 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
           self.ctx.state_idx += 1
           let hi = self.read8(bus, IO8Type::Imm8).unwrap()
           self.ctx.state_idx -= 1
-          bus.write((hi.to_u16() << 8) | stackRef.val.u8.to_u16(), val)
-          stackRef.val.step = 3
+          bus.write((hi.to_u16() << 8) | state.val.u8.to_u16(), val)
+          state.val.step = 3
           None
         }
         3 => {
-          stackRef.val.step = 0
+          state.val.step = 0
           Some(())
         }
         _ => panic()
@@ -283,13 +281,13 @@ impl IO16 for Cpu with read16(self, bus, src) {
         },
       )
     IO16Type::Imm16 => {
-      let stackRef = self.current_state()
-      match stackRef.val.step {
+      let state = self.current_state()
+      match state.val.step {
         0 => {
           self.ctx.state_idx += 1
           ignore(self.read8(bus, IO8Type::Imm8))
           self.ctx.state_idx -= 1
-          stackRef.val.step = 1
+          state.val.step = 1
           None
         }
         1 => {
@@ -297,16 +295,16 @@ impl IO16 for Cpu with read16(self, bus, src) {
           let lo = self.read8(bus, IO8Type::Imm8).unwrap()
           ignore(self.read8(bus, IO8Type::Imm8))
           self.ctx.state_idx -= 1
-          stackRef.val.u8 = lo
-          stackRef.val.step = 2
+          state.val.u8 = lo
+          state.val.step = 2
           None
         }
         2 => {
           self.ctx.state_idx += 1
           let hi = self.read8(bus, IO8Type::Imm8).unwrap()
           self.ctx.state_idx -= 1
-          stackRef.val.step = 0
-          Some((hi.to_u16() << 8) | stackRef.val.u8.to_u16())
+          state.val.step = 0
+          Some((hi.to_u16() << 8) | state.val.u8.to_u16())
         }
         _ => panic()
       }
@@ -330,39 +328,39 @@ impl IO16 for Cpu with write16(self, bus, dst, val) {
       )
     IO16Type::Imm16 => panic()
     IO16Type::Direct16 => {
-      let stackRef = self.current_state()
-      match stackRef.val.step {
+      let state = self.current_state()
+      match state.val.step {
         0 => {
           self.ctx.state_idx += 1
           ignore(self.read8(bus, IO8Type::Imm8))
           self.ctx.state_idx -= 1
-          stackRef.val.step = 1
+          state.val.step = 1
           None
         }
         1 => {
           self.ctx.state_idx += 1
-          stackRef.val.u8 = self.read8(bus, IO8Type::Imm8).unwrap()
+          state.val.u8 = self.read8(bus, IO8Type::Imm8).unwrap()
           ignore(self.read8(bus, IO8Type::Imm8))
           self.ctx.state_idx -= 1
-          stackRef.val.step = 2
+          state.val.step = 2
           None
         }
         2 => {
           self.ctx.state_idx += 1
           let hi = self.read8(bus, IO8Type::Imm8).unwrap()
           self.ctx.state_idx -= 1
-          stackRef.val.u16 = (hi.to_u16() << 8) | stackRef.val.u8.to_u16()
-          bus.write(stackRef.val.u16, val.to_u8())
-          stackRef.val.step = 3
+          state.val.u16 = (hi.to_u16() << 8) | state.val.u8.to_u16()
+          bus.write(state.val.u16, val.to_u8())
+          state.val.step = 3
           None
         }
         3 => {
-          bus.write(stackRef.val.u16 + 1, (val >> 8).to_u8())
-          stackRef.val.step = 4
+          bus.write(state.val.u16 + 1, (val >> 8).to_u8())
+          state.val.step = 4
           None
         }
         4 => {
-          stackRef.val.step = 0
+          state.val.step = 0
           Some(())
         }
         _ => panic()
