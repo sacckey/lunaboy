@@ -340,13 +340,9 @@ fn Cpu::pop16(self : Self, bus : Bus) -> U16? {
 
 ///|
 fn Cpu::pop(self : Self, bus : Bus, dst : Reg16) -> Unit {
-  self.ctx.state_idx += 1
   if self.pop16(bus) is Some(u16) {
-    self.ctx.state_idx -= 1
     ignore(self.write16(bus, IO16Type::Reg16(dst), u16))
     self.fetch(bus)
-  } else {
-    self.ctx.state_idx -= 1
   }
 }
 
