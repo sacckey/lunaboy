@@ -18,7 +18,7 @@ impl Default for Ctx with default() -> Ctx {
   Ctx::{
     opcode: 0,
     cb: false,
-    state_stack: FixedArray::makei(8, fn(_i) { StackFrame::default() }),
+    state_stack: FixedArray::makei(4, fn(_i) { StackFrame::default() }),
     state_idx: 0,
   }
 }
