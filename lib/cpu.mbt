@@ -9,8 +9,8 @@ struct StackFrame {
 priv struct Ctx {
   mut opcode : U8
   mut cb : Bool
-  stack_array : FixedArray[StackFrame]
-  mut sp : Int
+  state_stack : FixedArray[StackFrame]
+  mut state_idx : Int
 }
 
 ///|
@@ -18,8 +18,8 @@ impl Default for Ctx with default() -> Ctx {
   Ctx::{
     opcode: 0,
     cb: false,
-    stack_array: FixedArray::makei(8, fn(_i) { StackFrame::default() }),
-    sp: 0,
+    state_stack: FixedArray::makei(8, fn(_i) { StackFrame::default() }),
+    state_idx: 0,
   }
 }
 
