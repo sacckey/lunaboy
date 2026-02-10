@@ -37,6 +37,9 @@ type StackFrame
 pub impl Default for StackFrame
 pub impl Show for StackFrame
 
+type Timer
+pub impl Default for Timer
+
 // Type aliases
 
 // Traits
