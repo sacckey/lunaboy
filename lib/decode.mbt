@@ -255,7 +255,7 @@ fn Cpu::decode(self : Self, bus : Bus) -> Unit {
     0xF6 => self.or(bus, IO8Type::Imm8)
     0xF7 => self.rst(bus, 0x30)
     0xF8 => self.ld_hl_sp(bus)
-    0xF9 => self.ld16(bus, IO16Type::Reg16(SP), IO16Type::Reg16(HL))
+    0xF9 => self.ld_sp_hl(bus)
     0xFA => self.ld(bus, IO8Type::Reg8(A), IO8Type::Direct8(Direct8::D))
     0xFB => self.ei(bus)
     // 0xFC => self.illegal(bus)

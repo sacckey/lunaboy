@@ -660,19 +660,41 @@ fn Cpu::add16(self : Self, bus : Bus, dst : IO16Type, src : IO16Type) -> Unit {
 
 ///|
 fn Cpu::jp(self : Self, bus : Bus) -> Unit {
-  if self.read16(bus, IO16Type::Imm16) is Some(u16) {
-    self.regs.pc = u16
-    self.fetch(bus)
+  let state = self.current_state()
+  match state.val.step {
+    0 =>
+      if self.with_child_state(fn() { self.read16(bus, IO16Type::Imm16) })
+        is Some(u16) {
+        self.regs.pc = u16
+        state.val.step = 1
+      }
+    1 => {
+      state.val.step = 0
+      self.fetch(bus)
+    }
+    _ => panic()
   }
 }
 
 ///|
 fn Cpu::jp_c(self : Self, bus : Bus, c : Cond) -> Unit {
-  if self.read16(bus, IO16Type::Imm16) is Some(u16) {
-    if self.cond(c) {
-      self.regs.pc = u16
+  let state = self.current_state()
+  match state.val.step {
+    0 =>
+      if self.with_child_state(fn() { self.read16(bus, IO16Type::Imm16) })
+        is Some(u16) {
+        state.val.step = 1
+        if self.cond(c) {
+          self.regs.pc = u16
+        } else {
+          self.jp_c(bus, c)
+        }
+      }
+    1 => {
+      state.val.step = 0
+      self.fetch(bus)
     }
-    self.fetch(bus)
+    _ => panic()
   }
 }
 
@@ -711,18 +733,12 @@ fn Cpu::ret_c(self : Self, bus : Bus, c : Cond) -> Unit {
   let state = self.current_state()
   match state.val.step {
     0 => {
-      state.val.u8 = self.cond(c).to_u8()
-      state.val.step = 1
-      self.ret_c(bus, c)
+      state.val.step = if self.cond(c) { 1 } else { 2 }
     }
     1 =>
-      if state.val.u8 == 0 {
-        state.val.step = 2
-        self.ret_c(bus, c)
-      } else if self.with_child_state(fn() { self.pop16(bus) }) is Some(u16) {
+      if self.with_child_state(fn() { self.pop16(bus) }) is Some(u16) {
         self.regs.pc = u16
         state.val.step = 2
-        self.ret_c(bus, c)
       }
     2 => {
       state.val.step = 0
@@ -734,32 +750,38 @@ fn Cpu::ret_c(self : Self, bus : Bus, c : Cond) -> Unit {
 
 ///|
 fn Cpu::rst(self : Self, bus : Bus, addr : U16) -> Unit {
-  let state = self.current_state()
-  match state.val.step {
-    0 =>
-      if self.with_child_state(fn() { self.push16(bus, self.regs.pc) })
-        is Some(_) {
-        self.regs.pc = addr
-        state.val.step = 1
-      }
-    1 => {
-      state.val.step = 0
-      self.fetch(bus)
-    }
-    _ => panic()
+  if self.with_child_state(fn() { self.push16(bus, self.regs.pc) })
+    is Some(_) {
+    self.regs.pc = addr
+    self.fetch(bus)
   }
 }
 
 ///|
 fn Cpu::add_sp(self : Self, bus : Bus) -> Unit {
-  if self.read8(bus, IO8Type::Imm8) is Some(u8) {
-    let sp = self.regs.sp
-    self.regs.set_zf(false)
-    self.regs.set_nf(false)
-    self.regs.set_hf((sp & 0x000F) + (u8.to_u16() & 0x000F) > 0x000F)
-    self.regs.set_cf((sp & 0x00FF) + u8.to_u16() > 0x00FF)
-    self.regs.sp = sp + u8.to_i8().reinterpret_as_uint16()
-    self.fetch(bus)
+  let state = self.current_state()
+  match state.val.step {
+    0 =>
+      if self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+        is Some(u8) {
+        state.val.u8 = u8
+        state.val.step = 1
+      }
+    1 => {
+      let sp = self.regs.sp
+      let u8 = state.val.u8
+      self.regs.set_zf(false)
+      self.regs.set_nf(false)
+      self.regs.set_hf((sp & 0x000F) + (u8.to_u16() & 0x000F) > 0x000F)
+      self.regs.set_cf((sp & 0x00FF) + u8.to_u16() > 0x00FF)
+      self.regs.sp = sp + u8.to_i8().reinterpret_as_uint16()
+      state.val.step = 2
+    }
+    2 => {
+      state.val.step = 0
+      self.fetch(bus)
+    }
+    _ => panic()
   }
 }
 
@@ -771,14 +793,40 @@ fn Cpu::jp_hl(self : Self, bus : Bus) -> Unit {
 
 ///|
 fn Cpu::ld_hl_sp(self : Self, bus : Bus) -> Unit {
-  if self.read8(bus, IO8Type::Imm8) is Some(u8) {
-    let sp = self.regs.sp
-    self.regs.set_zf(false)
-    self.regs.set_nf(false)
-    self.regs.set_hf((sp & 0x000F) + (u8.to_u16() & 0x000F) > 0x000F)
-    self.regs.set_cf((sp & 0x00FF) + u8.to_u16() > 0x00FF)
-    self.regs.write_hl(sp + u8.to_i8().reinterpret_as_uint16())
-    self.fetch(bus)
+  let state = self.current_state()
+  match state.val.step {
+    0 =>
+      if self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+        is Some(u8) {
+        let sp = self.regs.sp
+        self.regs.set_zf(false)
+        self.regs.set_nf(false)
+        self.regs.set_hf((sp & 0x000F) + (u8.to_u16() & 0x000F) > 0x000F)
+        self.regs.set_cf((sp & 0x00FF) + u8.to_u16() > 0x00FF)
+        self.regs.write_hl(sp + u8.to_i8().reinterpret_as_uint16())
+        state.val.step = 1
+      }
+    1 => {
+      state.val.step = 0
+      self.fetch(bus)
+    }
+    _ => panic()
+  }
+}
+
+///|
+fn Cpu::ld_sp_hl(self : Self, bus : Bus) -> Unit {
+  let state = self.current_state()
+  match state.val.step {
+    0 => {
+      self.regs.sp = self.regs.hl()
+      state.val.step = 1
+    }
+    1 => {
+      state.val.step = 0
+      self.fetch(bus)
+    }
+    _ => panic()
   }
 }
 
