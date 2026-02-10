@@ -44,10 +44,7 @@ fn Timer::read(self : Self, addr : U16) -> U8 {
 fn Timer::write(self : Self, addr : U16, val : U8) -> Unit {
   match addr {
     0xFF04 => self.div = 0
-    0xFF05 =>
-      if !self.overflow {
-        self.tima = val
-      }
+    0xFF05 => if !self.overflow { self.tima = val }
     0xFF06 => self.tma = val
     0xFF07 => self.tac = val & 0b111
     _ => panic()

@@ -5,12 +5,19 @@ priv struct Bus {
   wram : WRam
   hram : HRam
   ppu : Ppu
-  timer: Timer
+  timer : Timer
 }
 
 ///|
 fn Bus::new(bootrom : Bootrom, cartridge : Cartridge) -> Self {
-  { bootrom, cartridge, wram: WRam::new(), hram: HRam::new(), ppu: Ppu::new(), timer: Timer::default() }
+  {
+    bootrom,
+    cartridge,
+    wram: WRam::new(),
+    hram: HRam::new(),
+    ppu: Ppu::new(),
+    timer: Timer::default(),
+  }
 }
 
 ///|
