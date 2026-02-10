@@ -422,7 +422,8 @@ fn Cpu::stop(self : Self, bus : Bus) -> Unit {
   let state = self.current_state()
   match state.val.step {
     0 =>
-      if self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) }) is Some(_) {
+      if self.with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
+        is Some(_) {
         state.val.step = 1
       }
     1 => {
@@ -543,7 +544,7 @@ fn Cpu::add(self : Self, bus : Bus, src : IO8Type) -> Unit {
     self.regs.a = res
     self.regs.set_zf(res == 0)
     self.regs.set_nf(false)
-    self.regs.set_hf(((a & 0x0F) + (u8 & 0x0F)) > 0x0F)
+    self.regs.set_hf((a & 0x0F) + (u8 & 0x0F) > 0x0F)
     self.regs.set_cf(res < a)
     self.fetch(bus)
   }
@@ -558,7 +559,7 @@ fn Cpu::adc(self : Self, bus : Bus, src : IO8Type) -> Unit {
     self.regs.a = res
     self.regs.set_zf(res == 0)
     self.regs.set_nf(false)
-    self.regs.set_hf(((a & 0x0F) + (u8 & 0x0F) + carry) > 0x0F)
+    self.regs.set_hf((a & 0x0F) + (u8 & 0x0F) + carry > 0x0F)
     self.regs.set_cf(a.to_int() + u8.to_int() + carry.to_int() > 0xFF)
     self.fetch(bus)
   }
@@ -587,7 +588,7 @@ fn Cpu::sbc(self : Self, bus : Bus, src : IO8Type) -> Unit {
     self.regs.a = res
     self.regs.set_zf(res == 0)
     self.regs.set_nf(true)
-    self.regs.set_hf((a & 0x0F) < ((u8 & 0x0F) + carry))
+    self.regs.set_hf((a & 0x0F) < (u8 & 0x0F) + carry)
     self.regs.set_cf(a.to_int() < u8.to_int() + carry.to_int())
     self.fetch(bus)
   }
@@ -644,7 +645,7 @@ fn Cpu::add16(self : Self, bus : Bus, dst : IO16Type, src : IO16Type) -> Unit {
       let rhs = state.val.u16
       let res = lhs + rhs
       self.regs.set_nf(false)
-      self.regs.set_hf(((lhs & 0x0FFF) + (rhs & 0x0FFF)) > 0x0FFF)
+      self.regs.set_hf((lhs & 0x0FFF) + (rhs & 0x0FFF) > 0x0FFF)
       self.regs.set_cf(res < lhs)
       ignore(self.write16(bus, dst, res))
       state.val.step = 2
@@ -755,8 +756,8 @@ fn Cpu::add_sp(self : Self, bus : Bus) -> Unit {
     let sp = self.regs.sp
     self.regs.set_zf(false)
     self.regs.set_nf(false)
-    self.regs.set_hf(((sp & 0x000F) + (u8.to_u16() & 0x000F)) > 0x000F)
-    self.regs.set_cf(((sp & 0x00FF) + u8.to_u16()) > 0x00FF)
+    self.regs.set_hf((sp & 0x000F) + (u8.to_u16() & 0x000F) > 0x000F)
+    self.regs.set_cf((sp & 0x00FF) + u8.to_u16() > 0x00FF)
     self.regs.sp = sp + u8.to_i8().reinterpret_as_uint16()
     self.fetch(bus)
   }
@@ -774,8 +775,8 @@ fn Cpu::ld_hl_sp(self : Self, bus : Bus) -> Unit {
     let sp = self.regs.sp
     self.regs.set_zf(false)
     self.regs.set_nf(false)
-    self.regs.set_hf(((sp & 0x000F) + (u8.to_u16() & 0x000F)) > 0x000F)
-    self.regs.set_cf(((sp & 0x00FF) + u8.to_u16()) > 0x00FF)
+    self.regs.set_hf((sp & 0x000F) + (u8.to_u16() & 0x000F) > 0x000F)
+    self.regs.set_cf((sp & 0x00FF) + u8.to_u16() > 0x00FF)
     self.regs.write_hl(sp + u8.to_i8().reinterpret_as_uint16())
     self.fetch(bus)
   }
@@ -969,7 +970,7 @@ fn Cpu::res(self : Self, bus : Bus, bit : Int, src : IO8Type) -> Unit {
   match state.val.step {
     0 =>
       if self.with_child_state(fn() { self.read8(bus, src) }) is Some(u8) {
-        state.val.u8 = u8 & ((1 << bit).to_u8()).lnot()
+        state.val.u8 = u8 & (1 << bit).to_u8().lnot()
         state.val.step = 1
         self.res(bus, bit, src)
       }
