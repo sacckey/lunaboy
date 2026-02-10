@@ -19,7 +19,7 @@ priv struct Lcd {
 
 ///|
 fn Lcd::new() -> Self {
-  ignore(@sdl.sdl_Init(@sdl.SDL_INIT_VIDEO))
+  @sdl.sdl_Init(@sdl.SDL_INIT_VIDEO) |> ignore
 
   let window = @sdl.sdl_CreateWindow(
     "Luna Boy",
@@ -36,7 +36,7 @@ fn Lcd::new() -> Self {
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
   )
-  ignore(@sdl.sdl_SetTextureScaleMode(texture, @sdl.SDL_SCALEMODE_NEAREST))
+  @sdl.sdl_SetTextureScaleMode(texture, @sdl.SDL_SCALEMODE_NEAREST) |> ignore
 
   Lcd::{ renderer, _window: window, texture }
 }
@@ -57,17 +57,15 @@ fn Lcd::draw(self : Self, pixels : FixedArray[UInt]) -> Unit {
     h: Float::from_int(SCREEN_HEIGHT * SCALE),
   }
 
-  ignore(
-    @sdl.sdl_UpdateTexture(
-      self.texture,
-      @sdl.SDL_Rect::{ x: 0, y: 0, w: SCREEN_WIDTH, h: SCREEN_HEIGHT },
-      as_void_ptr(pixels),
-      SCREEN_WIDTH * 4,
-    ),
+  @sdl.sdl_UpdateTexture(
+    self.texture,
+    @sdl.SDL_Rect::{ x: 0, y: 0, w: SCREEN_WIDTH, h: SCREEN_HEIGHT },
+    as_void_ptr(pixels),
+    SCREEN_WIDTH * 4,
   )
-  ignore(@sdl.sdl_RenderClear(self.renderer))
-  ignore(
-    @sdl.sdl_RenderTexture(self.renderer, self.texture, src_rect, dst_rect),
-  )
-  ignore(@sdl.sdl_RenderPresent(self.renderer))
+  |> ignore
+  @sdl.sdl_RenderClear(self.renderer) |> ignore
+  @sdl.sdl_RenderTexture(self.renderer, self.texture, src_rect, dst_rect)
+  |> ignore
+  @sdl.sdl_RenderPresent(self.renderer) |> ignore
 }

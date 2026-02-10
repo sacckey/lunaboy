@@ -274,7 +274,7 @@ fn Cpu::pop16(self : Self, bus : Bus) -> U16? {
 ///|
 fn Cpu::pop(self : Self, bus : Bus, dst : Reg16) -> Unit {
   if self.pop16(bus) is Some(u16) {
-    ignore(self.write16(bus, IO16Type::Reg16(dst), u16))
+    self.write16(bus, IO16Type::Reg16(dst), u16) |> ignore
     self.fetch(bus)
   }
 }
@@ -647,7 +647,7 @@ fn Cpu::add16(self : Self, bus : Bus, dst : IO16Type, src : IO16Type) -> Unit {
       self.regs.set_nf(false)
       self.regs.set_hf((lhs & 0x0FFF) + (rhs & 0x0FFF) > 0x0FFF)
       self.regs.set_cf(res < lhs)
-      ignore(self.write16(bus, dst, res))
+      self.write16(bus, dst, res) |> ignore
       state.val.step = 2
     }
     2 => {
