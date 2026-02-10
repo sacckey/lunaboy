@@ -732,9 +732,7 @@ fn Cpu::call_c(self : Self, bus : Bus, c : Cond) -> Unit {
 fn Cpu::ret_c(self : Self, bus : Bus, c : Cond) -> Unit {
   let state = self.current_state()
   match state.val.step {
-    0 => {
-      state.val.step = if self.cond(c) { 1 } else { 2 }
-    }
+    0 => state.val.step = if self.cond(c) { 1 } else { 2 }
     1 =>
       if self.with_child_state(fn() { self.pop16(bus) }) is Some(u16) {
         self.regs.pc = u16
@@ -750,8 +748,7 @@ fn Cpu::ret_c(self : Self, bus : Bus, c : Cond) -> Unit {
 
 ///|
 fn Cpu::rst(self : Self, bus : Bus, addr : U16) -> Unit {
-  if self.with_child_state(fn() { self.push16(bus, self.regs.pc) })
-    is Some(_) {
+  if self.with_child_state(fn() { self.push16(bus, self.regs.pc) }) is Some(_) {
     self.regs.pc = addr
     self.fetch(bus)
   }
