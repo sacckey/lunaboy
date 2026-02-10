@@ -16,17 +16,18 @@ priv struct Emulator {
 
 ///|
 pub fn run_emulator() -> Unit raise {
-  let rom = @fs.read_file_to_bytes("lib/dmg_bootrom.bin")
-  let bootrom = Bootrom::new(rom.to_fixedarray())
-  let emulator = Emulator::new(bootrom)
+  let bootrom = Bootrom::new(@fs.read_file_to_bytes("lib/dmg_bootrom.bin").to_fixedarray())
+  let rom = @fs.read_file_to_bytes("lib/roms/hello-world.gb").to_fixedarray()
+  let emulator = Emulator::new(bootrom, rom)
 
   emulator.run()
 }
 
 ///|
-fn Emulator::new(bootrom : Bootrom) -> Self {
+fn Emulator::new(bootrom : Bootrom, rom : FixedArray[U8]) -> Self {
   let lcd = Lcd::new()
-  let bus = Bus::new(bootrom)
+  let cartridge = Cartridge::new(rom)
+  let bus = Bus::new(bootrom, cartridge)
   let cpu = Cpu::new()
 
   Emulator::{ cpu, bus, lcd }
