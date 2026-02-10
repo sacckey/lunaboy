@@ -13,7 +13,7 @@ fn Bus::new(bootrom : Bootrom, cartridge : Cartridge) -> Self {
 }
 
 ///|
-fn Bus::read(self : Self, addr : U16) -> U8 {
+fn Bus::read(self : Self, interrupts : Interrupts, addr : U16) -> U8 {
   match addr {
     0x0000..=0x00FF =>
       if self.bootrom.is_active() {
@@ -26,14 +26,21 @@ fn Bus::read(self : Self, addr : U16) -> U8 {
     0xA000..=0xBFFF => self.cartridge.read(addr)
     0xC000..=0xFDFF => self.wram.read(addr)
     0xFE00..=0xFE9F => self.ppu.read(addr)
+    0xFF0F => interrupts.read(addr)
     0xFF40..=0xFF4B => self.ppu.read(addr)
     0xFF80..=0xFFFE => self.hram.read(addr)
+    0xFFFF => interrupts.read(addr)
     _ => 0xFF
   }
 }
 
 ///|
-fn Bus::write(self : Self, addr : U16, val : U8) -> Unit {
+fn Bus::write(
+  self : Self,
+  interrupts : Interrupts,
+  addr : U16,
+  val : U8,
+) -> Unit {
   match addr {
     0x0000..=0x00FF =>
       if !self.bootrom.is_active() {
@@ -44,9 +51,11 @@ fn Bus::write(self : Self, addr : U16, val : U8) -> Unit {
     0xA000..=0xBFFF => self.cartridge.write(addr, val)
     0xC000..=0xFDFF => self.wram.write(addr, val)
     0xFE00..=0xFE9F => self.ppu.write(addr, val)
+    0xFF0F => interrupts.write(addr, val)
     0xFF40..=0xFF4B => self.ppu.write(addr, val)
     0xFF50 => self.bootrom.write(addr, val)
     0xFF80..=0xFFFE => self.hram.write(addr, val)
+    0xFFFF => interrupts.write(addr, val)
     _ => ()
   }
 }

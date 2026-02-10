@@ -88,7 +88,7 @@ impl IO8 for Cpu with read8(self, bus, src) {
       let state = self.current_state()
       match state.val.step {
         0 => {
-          state.val.u8 = bus.read(self.regs.pc)
+          state.val.u8 = bus.read(self.interrupts, self.regs.pc)
           state.val.step = 1
           self.regs.pc = self.regs.pc + 1
           None
@@ -105,19 +105,19 @@ impl IO8 for Cpu with read8(self, bus, src) {
       match state.val.step {
         0 => {
           let u8 = match ind {
-            BC => bus.read(self.regs.bc())
-            DE => bus.read(self.regs.de())
-            HL => bus.read(self.regs.hl())
-            CFF => bus.read(0xFF00 | self.regs.c.to_u16())
+            BC => bus.read(self.interrupts, self.regs.bc())
+            DE => bus.read(self.interrupts, self.regs.de())
+            HL => bus.read(self.interrupts, self.regs.hl())
+            CFF => bus.read(self.interrupts, 0xFF00 | self.regs.c.to_u16())
             HLD => {
               let addr = self.regs.hl()
               self.regs.write_hl(addr - 1)
-              bus.read(addr)
+              bus.read(self.interrupts, addr)
             }
             HLI => {
               let addr = self.regs.hl()
               self.regs.write_hl(addr + 1)
-              bus.read(addr)
+              bus.read(self.interrupts, addr)
             }
           }
           state.val.u8 = u8
@@ -152,7 +152,7 @@ impl IO8 for Cpu with read8(self, bus, src) {
               state.val.step = 2
             }
             Direct8::DFF => {
-              state.val.u8 = bus.read(0xFF00 | lo.to_u16())
+              state.val.u8 = bus.read(self.interrupts, 0xFF00 | lo.to_u16())
               state.val.step = 3
             }
           }
@@ -162,7 +162,7 @@ impl IO8 for Cpu with read8(self, bus, src) {
           let hi = self
             .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
             .unwrap()
-          state.val.u8 = bus.read((hi.to_u16() << 8) | state.val.u8.to_u16())
+          state.val.u8 = bus.read(self.interrupts, (hi.to_u16() << 8) | state.val.u8.to_u16())
           state.val.step = 3
           None
         }
@@ -197,19 +197,19 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
       match state.val.step {
         0 => {
           match ind {
-            BC => bus.write(self.regs.bc(), val)
-            DE => bus.write(self.regs.de(), val)
-            HL => bus.write(self.regs.hl(), val)
-            CFF => bus.write(0xFF00 | self.regs.c.to_u16(), val)
+            BC => bus.write(self.interrupts, self.regs.bc(), val)
+            DE => bus.write(self.interrupts, self.regs.de(), val)
+            HL => bus.write(self.interrupts, self.regs.hl(), val)
+            CFF => bus.write(self.interrupts, 0xFF00 | self.regs.c.to_u16(), val)
             HLD => {
               let addr = self.regs.hl()
               self.regs.write_hl(addr - 1)
-              bus.write(addr, val)
+              bus.write(self.interrupts, addr, val)
             }
             HLI => {
               let addr = self.regs.hl()
               self.regs.write_hl(addr + 1)
-              bus.write(addr, val)
+              bus.write(self.interrupts, addr, val)
             }
           }
           state.val.step = 1
@@ -243,7 +243,7 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
               state.val.step = 2
             }
             Direct8::DFF => {
-              bus.write(0xFF00 | lo.to_u16(), val)
+              bus.write(self.interrupts, 0xFF00 | lo.to_u16(), val)
               state.val.step = 3
             }
           }
@@ -253,7 +253,7 @@ impl IO8 for Cpu with write8(self, bus, dst, val) {
           let hi = self
             .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
             .unwrap()
-          bus.write((hi.to_u16() << 8) | state.val.u8.to_u16(), val)
+          bus.write(self.interrupts, (hi.to_u16() << 8) | state.val.u8.to_u16(), val)
           state.val.step = 3
           None
         }
@@ -346,12 +346,12 @@ impl IO16 for Cpu with write16(self, bus, dst, val) {
             .with_child_state(fn() { self.read8(bus, IO8Type::Imm8) })
             .unwrap()
           state.val.u16 = (hi.to_u16() << 8) | state.val.u8.to_u16()
-          bus.write(state.val.u16, val.to_u8())
+          bus.write(self.interrupts, state.val.u16, val.to_u8())
           state.val.step = 3
           None
         }
         3 => {
-          bus.write(state.val.u16 + 1, (val >> 8).to_u8())
+          bus.write(self.interrupts, state.val.u16 + 1, (val >> 8).to_u8())
           state.val.step = 4
           None
         }

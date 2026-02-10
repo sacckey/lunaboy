@@ -204,14 +204,14 @@ fn Cpu::push16(self : Self, bus : Bus, val : U16) -> Unit? {
     }
     1 => {
       self.regs.sp -= 1
-      bus.write(self.regs.sp, (val >> 8).to_u8())
+      bus.write(self.interrupts, self.regs.sp, (val >> 8).to_u8())
       state.val.u8 = val.to_u8()
       state.val.step = 2
       None
     }
     2 => {
       self.regs.sp -= 1
-      bus.write(self.regs.sp, state.val.u8)
+      bus.write(self.interrupts, self.regs.sp, state.val.u8)
       state.val.step = 3
       None
     }
@@ -251,13 +251,13 @@ fn Cpu::pop16(self : Self, bus : Bus) -> U16? {
   let state = self.current_state()
   match state.val.step {
     0 => {
-      state.val.u8 = bus.read(self.regs.sp)
+      state.val.u8 = bus.read(self.interrupts, self.regs.sp)
       self.regs.sp += 1
       state.val.step = 1
       None
     }
     1 => {
-      let hi = bus.read(self.regs.sp)
+      let hi = bus.read(self.interrupts, self.regs.sp)
       self.regs.sp += 1
       state.val.u16 = (hi.to_u16() << 8) | state.val.u8.to_u16()
       state.val.step = 2
@@ -364,6 +364,55 @@ fn Cpu::ret(self : Self, bus : Bus) -> Unit {
       state.val.step = 0
       self.fetch(bus)
     }
+    _ => panic()
+  }
+}
+
+///|
+fn Cpu::reti(self : Self, bus : Bus) -> Unit {
+  let state = self.current_state()
+  match state.val.step {
+    0 =>
+      if self.with_child_state(fn() { self.pop16(bus) }) is Some(u16) {
+        self.regs.pc = u16
+        state.val.step = 1
+      }
+    1 => {
+      self.interrupts.ime = true
+      state.val.step = 0
+      self.fetch(bus)
+    }
+    _ => panic()
+  }
+}
+
+///|
+fn Cpu::ei(self : Self, bus : Bus) -> Unit {
+  self.fetch(bus)
+  self.interrupts.ime = true
+}
+
+///|
+fn Cpu::di(self : Self, bus : Bus) -> Unit {
+  self.interrupts.ime = false
+  self.fetch(bus)
+}
+
+///|
+fn Cpu::halt(self : Self, bus : Bus) -> Unit {
+  let state = self.current_state()
+  match state.val.step {
+    0 =>
+      if self.interrupts.get_interrupt() > 0 {
+        self.fetch(bus)
+      } else {
+        state.val.step = 1
+      }
+    1 =>
+      if self.interrupts.get_interrupt() > 0 {
+        state.val.step = 0
+        self.fetch(bus)
+      }
     _ => panic()
   }
 }
