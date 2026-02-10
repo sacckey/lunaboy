@@ -39,6 +39,7 @@ fn Emulator::new(bootrom : Bootrom, rom : FixedArray[U8]) -> Self {
 fn Emulator::run(self : Self) -> Unit {
   while true {
     self.cpu.emulate_cycle(self.bus)
+    self.bus.timer.emulate_cycle(self.cpu.interrupts)
     if self.bus.ppu.emulate_cycle() {
       self.lcd.draw(self.bus.ppu.buffer)
     }
