@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub fn run_emulator() -> Unit raise
+pub fn run_emulator(String?) -> Unit raise
 
 // Errors
 
