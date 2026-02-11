@@ -44,6 +44,18 @@ const HBLANK_INT : U8 = 0b00001000
 const LYC_EQ_LY : U8 = 0b00000100
 
 ///|
+const OBJ2BG_PRIORITY : U8 = 0b10000000
+
+///|
+const Y_FLIP : U8 = 0b01000000
+
+///|
+const X_FLIP : U8 = 0b00100000
+
+///|
+const PALETTE : U8 = 0b00010000
+
+///|
 enum Mode {
   HBlank = 0
   VBlank = 1
@@ -59,6 +71,14 @@ fn Mode::to_u8(self : Self) -> U8 {
     Mode::OamScan => 2
     Mode::Drawing => 3
   }
+}
+
+priv struct Sprite {
+  y : Int
+  x : Int
+  tile_idx : U8
+  flags : U8
+  oam_idx : Int
 }
 
 ///|
@@ -193,7 +213,7 @@ fn Ppu::get_tile_idx_from_tile_map(
 }
 
 ///|
-fn Ppu::render_bg(self : Self) -> Unit {
+fn Ppu::render_bg(self : Self, bg_prio : FixedArray[Bool]) -> Unit {
   if (self.lcdc & BG_WINDOW_ENABLE) == 0 {
     return
   }
@@ -216,6 +236,7 @@ fn Ppu::render_bg(self : Self) -> Unit {
       0b10 => 0xFF555555
       _ => 0xFF000000
     }
+    bg_prio[i] = pixel != 0
   }
 }
 
@@ -254,6 +275,92 @@ fn Ppu::render_window(self : Self, bg_prio : FixedArray[Bool]) -> Unit {
     bg_prio[i] = pixel != 0
   }
   self.wly += wly_add
+}
+
+///|
+fn Ppu::render_sprite(self : Self, bg_prio : FixedArray[Bool]) -> Unit {
+  if (self.lcdc & SPRITE_ENABLE) == 0 {
+    return
+  }
+
+  let size : U8 = if (self.lcdc & SPRITE_SIZE) > 0 { 16 } else { 8 }
+  let sprites = FixedArray::makei(10, fn(_i) {
+    Sprite::{ y: 0, x: 0, tile_idx: 0, flags: 0, oam_idx: 0 }
+  })
+  let line = self.ly.to_int()
+  let mut sprite_count = 0
+  for n in 0..<40 {
+    if sprite_count >= 10 {
+      break
+    }
+    let base = n * 4
+    let y = (self.oam[base].to_int() - 16) & 0xFF
+    let x = (self.oam[base + 1].to_int() - 8) & 0xFF
+    let ly_rel = (line - y) & 0xFF
+    if ly_rel < size.to_int() {
+      sprites[sprite_count] = Sprite::{
+        y,
+        x,
+        tile_idx: self.oam[base + 2],
+        flags: self.oam[base + 3],
+        oam_idx: n,
+      }
+      sprite_count += 1
+    }
+  }
+
+  // Draw lower-priority sprites first: larger X, then larger OAM index.
+  for i in 0..<sprite_count {
+    for j in (i + 1)..<sprite_count {
+      let need_swap = sprites[i].x < sprites[j].x ||
+        (
+          sprites[i].x == sprites[j].x &&
+          sprites[i].oam_idx < sprites[j].oam_idx
+        )
+      if need_swap {
+        let tmp = sprites[i]
+        sprites[i] = sprites[j]
+        sprites[j] = tmp
+      }
+    }
+  }
+
+  for i in 0..<sprite_count {
+    let sprite = sprites[i]
+    let y = sprite.y
+    let x = sprite.x
+    let flags = sprite.flags
+    let palette = if (flags & PALETTE) > 0 { self.obp1 } else { self.obp0 }
+    let mut tile_idx = sprite.tile_idx.to_int()
+    let ly_rel = (line - y) & 0xFF
+    let mut row = if (flags & Y_FLIP) > 0 {
+      size.to_int() - 1 - ly_rel
+    } else {
+      ly_rel
+    }
+    if size == 16 {
+      tile_idx = tile_idx & 0xFE
+      tile_idx += if row >= 8 { 1 } else { 0 }
+      row = row & 7
+    }
+
+    for col in 0..<8 {
+      let col_flipped = if (flags & X_FLIP) > 0 { 7 - col } else { col }
+      let pixel = self.get_pixel_from_tile(tile_idx, row, col_flipped)
+      let px = (x + col) & 0xFF
+      if px < LCD_WIDTH && pixel > 0 {
+        if (flags & OBJ2BG_PRIORITY) == 0 || !bg_prio[px] {
+          self.buffer[LCD_WIDTH * self.ly.to_int() + px] = match
+            (palette >> (pixel.to_int() << 1)) & 0b11 {
+            0b00 => 0xFFFFFFFF
+            0b01 => 0xFFAAAAAA
+            0b10 => 0xFF555555
+            _ => 0xFF000000
+          }
+        }
+      }
+    }
+  }
 }
 
 ///|
@@ -307,7 +414,8 @@ fn Ppu::emulate_cycle(self : Self) -> Bool {
       self.cycles = 43
     }
     Mode::Drawing => {
-      self.render_bg()
+      let bg_prio = FixedArray::make(LCD_WIDTH, false)
+      self.render_bg(bg_prio)
       self.mode = Mode::HBlank
       self.cycles = 51
     }
