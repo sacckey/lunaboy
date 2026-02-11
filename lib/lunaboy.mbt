@@ -15,11 +15,13 @@ priv struct Emulator {
 }
 
 ///|
-pub fn run_emulator() -> Unit raise {
+pub fn run_emulator(rom_path : String?) -> Unit raise {
   let bootrom = Bootrom::new(
     @fs.read_file_to_bytes("lib/dmg_bootrom.bin").to_fixedarray(),
   )
-  let rom = @fs.read_file_to_bytes("lib/roms/hello-world.gb").to_fixedarray()
+
+  let resolved_rom_path = rom_path.unwrap_or("lib/roms/hello-world.gb")
+  let rom = @fs.read_file_to_bytes(resolved_rom_path).to_fixedarray()
   let emulator = Emulator::new(bootrom, rom)
 
   emulator.run()

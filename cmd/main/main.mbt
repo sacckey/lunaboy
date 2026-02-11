@@ -1,4 +1,5 @@
 ///|
 fn main {
-  try! @lib.run_emulator()
+  let argv = @sys.get_cli_args()
+  try! @lib.run_emulator(argv.get(1))
 }
