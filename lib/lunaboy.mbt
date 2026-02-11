@@ -43,7 +43,9 @@ fn Emulator::run(self : Self) -> Unit {
     self.cpu.emulate_cycle(self.bus)
     self.bus.timer.emulate_cycle(self.cpu.interrupts)
     if self.bus.ppu.emulate_cycle() {
-      self.lcd.draw(self.bus.ppu.buffer)
+      if self.lcd.draw(self.bus.ppu.buffer) {
+        break
+      }
     }
   }
 }

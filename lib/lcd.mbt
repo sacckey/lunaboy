@@ -15,6 +15,7 @@ priv struct Lcd {
   _window : @sdl.SDL_Window
   renderer : @sdl.SDL_Renderer
   texture : @sdl.SDL_Texture
+  event : @sdl.SDL_Event
 }
 
 ///|
@@ -38,12 +39,20 @@ fn Lcd::new() -> Self {
   )
   @sdl.sdl_SetTextureScaleMode(texture, @sdl.SDL_SCALEMODE_NEAREST) |> ignore
 
-  Lcd::{ renderer, _window: window, texture }
+  let event = @sdl.new_sdl_event()
+
+  Lcd::{ renderer, _window: window, texture, event }
 }
 
 ///|
-fn Lcd::draw(self : Self, pixels : FixedArray[UInt]) -> Unit {
-  @sdl.sdl_PumpEvents()
+fn Lcd::draw(self : Self, pixels : FixedArray[UInt]) -> Bool {
+  while @sdl.sdl_PollEvent(self.event) {
+    match self.event.get_type() {
+      @sdl.SDL_EVENT_QUIT | @sdl.SDL_EVENT_WINDOW_CLOSE_REQUESTED => return true
+      _ => ()
+    }
+  }
+
   let src_rect = @sdl.SDL_FRect::{
     x: 0.0,
     y: 0.0,
@@ -68,4 +77,6 @@ fn Lcd::draw(self : Self, pixels : FixedArray[UInt]) -> Unit {
   @sdl.sdl_RenderTexture(self.renderer, self.texture, src_rect, dst_rect)
   |> ignore
   @sdl.sdl_RenderPresent(self.renderer) |> ignore
+
+  false
 }
