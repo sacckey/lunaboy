@@ -42,7 +42,12 @@ fn Emulator::run(self : Self) -> Unit {
   while true {
     self.cpu.emulate_cycle(self.bus)
     self.bus.timer.emulate_cycle(self.cpu.interrupts)
-    if self.bus.ppu.emulate_cycle() {
+    if self.bus.ppu.oam_dma is Some(addr) {
+      self.bus.ppu.oam_dma_emulate_cycle(
+        self.bus.read(self.cpu.interrupts, addr),
+      )
+    }
+    if self.bus.ppu.emulate_cycle(self.cpu.interrupts) {
       if self.lcd.draw(self.bus.ppu.buffer) {
         break
       }

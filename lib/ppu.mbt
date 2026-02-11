@@ -98,6 +98,7 @@ priv struct Ppu {
   mut wy : U8
   mut wx : U8
   mut wly : U8
+  mut oam_dma : U16?
   vram : FixedArray[U8]
   oam : FixedArray[U8]
   buffer : FixedArray[UInt]
@@ -123,6 +124,7 @@ fn Ppu::new() -> Ppu {
     vram: FixedArray::make(0x2000, 0),
     oam: FixedArray::make(0xA0, 0),
     buffer: FixedArray::make(LCD_WIDTH * LCD_HEIGHT, 0xffffffff),
+    oam_dma: None,
   }
 }
 
@@ -137,6 +139,8 @@ fn Ppu::read(self : Self, addr : U16) -> U8 {
       }
     0xFE00..=0xFE9F =>
       if self.mode == Mode::Drawing || self.mode == Mode::OamScan {
+        0xFF
+      } else if self.oam_dma is Some(_) {
         0xFF
       } else {
         self.oam[addr.to_int() & 0x00FF]
@@ -165,7 +169,9 @@ fn Ppu::write(self : Self, addr : U16, val : U8) -> Unit {
       }
     0xFE00..=0xFE9F =>
       if self.mode != Mode::Drawing && self.mode != Mode::OamScan {
-        self.oam[addr.to_int() & 0xFF] = val
+        if self.oam_dma is None {
+          self.oam[addr.to_int() & 0xFF] = val
+        }
       }
     0xFF40 => self.lcdc = val
     0xFF41 => self.stat = (self.stat & LYC_EQ_LY) | (val & 0xF8)
@@ -173,12 +179,23 @@ fn Ppu::write(self : Self, addr : U16, val : U8) -> Unit {
     0xFF43 => self.scx = val
     0xFF44 => ()
     0xFF45 => self.lyc = val
+    0xFF46 => self.oam_dma = Some(val.to_u16() << 8)
     0xFF47 => self.bgp = val
     0xFF48 => self.obp0 = val
     0xFF49 => self.obp1 = val
     0xFF4A => self.wy = val
     0xFF4B => self.wx = val
     _ => panic()
+  }
+}
+
+///|
+fn Ppu::oam_dma_emulate_cycle(self : Self, val : U8) -> Unit {
+  if self.oam_dma is Some(addr) {
+    if self.mode != Mode::Drawing && self.mode != Mode::OamScan {
+      self.oam[addr.to_int() & 0xFF] = val
+    }
+    self.oam_dma = Some(addr + 1).filter(x => x.to_u8() < 0xA0)
   }
 }
 
@@ -365,7 +382,7 @@ fn Ppu::render_sprite(self : Self, bg_prio : FixedArray[Bool]) -> Unit {
 }
 
 ///|
-fn Ppu::check_lyc_eq_ly(self : Self, interrupts: Interrupts) -> Unit {
+fn Ppu::check_lyc_eq_ly(self : Self, interrupts : Interrupts) -> Unit {
   if self.ly == self.lyc {
     self.stat = self.stat | LYC_EQ_LY
     if (self.stat & LYC_EQ_LY_INT) > 0 {
@@ -377,7 +394,7 @@ fn Ppu::check_lyc_eq_ly(self : Self, interrupts: Interrupts) -> Unit {
 }
 
 ///|
-fn Ppu::emulate_cycle(self : Self, interrupts: Interrupts) -> Bool {
+fn Ppu::emulate_cycle(self : Self, interrupts : Interrupts) -> Bool {
   if (self.lcdc & PPU_ENABLE) == 0 {
     return false
   }
