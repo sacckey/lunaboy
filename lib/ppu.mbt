@@ -73,6 +73,7 @@ fn Mode::to_u8(self : Self) -> U8 {
   }
 }
 
+///|
 priv struct Sprite {
   y : Int
   x : Int
@@ -364,16 +365,19 @@ fn Ppu::render_sprite(self : Self, bg_prio : FixedArray[Bool]) -> Unit {
 }
 
 ///|
-fn Ppu::check_lyc_eq_ly(self : Self) -> Unit {
+fn Ppu::check_lyc_eq_ly(self : Self, interrupts: Interrupts) -> Unit {
   if self.ly == self.lyc {
     self.stat = self.stat | LYC_EQ_LY
+    if (self.stat & LYC_EQ_LY_INT) > 0 {
+      interrupts.irq(STAT)
+    }
   } else {
     self.stat = self.stat & LYC_EQ_LY.lnot()
   }
 }
 
 ///|
-fn Ppu::emulate_cycle(self : Self) -> Bool {
+fn Ppu::emulate_cycle(self : Self, interrupts: Interrupts) -> Bool {
   if (self.lcdc & PPU_ENABLE) == 0 {
     return false
   }
@@ -390,11 +394,18 @@ fn Ppu::emulate_cycle(self : Self) -> Bool {
       if self.ly < 144 {
         self.mode = Mode::OamScan
         self.cycles = 20
+        if (self.stat & OAM_SCAN_INT) > 0 {
+          interrupts.irq(STAT)
+        }
       } else {
         self.mode = Mode::VBlank
         self.cycles = 114
+        interrupts.irq(VBLANK)
+        if (self.stat & VBLANK_INT) > 0 {
+          interrupts.irq(STAT)
+        }
       }
-      self.check_lyc_eq_ly()
+      self.check_lyc_eq_ly(interrupts)
     }
     Mode::VBlank => {
       self.ly += 1
@@ -404,10 +415,13 @@ fn Ppu::emulate_cycle(self : Self) -> Bool {
         self.wly = 0
         self.mode = Mode::OamScan
         self.cycles = 20
+        if (self.stat & OAM_SCAN_INT) > 0 {
+          interrupts.irq(STAT)
+        }
       } else {
         self.cycles = 114
       }
-      self.check_lyc_eq_ly()
+      self.check_lyc_eq_ly(interrupts)
     }
     Mode::OamScan => {
       self.mode = Mode::Drawing
@@ -416,8 +430,13 @@ fn Ppu::emulate_cycle(self : Self) -> Bool {
     Mode::Drawing => {
       let bg_prio = FixedArray::make(LCD_WIDTH, false)
       self.render_bg(bg_prio)
+      self.render_window(bg_prio)
+      self.render_sprite(bg_prio)
       self.mode = Mode::HBlank
       self.cycles = 51
+      if (self.stat & HBLANK_INT) > 0 {
+        interrupts.irq(STAT)
+      }
     }
   }
 
