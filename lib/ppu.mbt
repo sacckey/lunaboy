@@ -76,6 +76,7 @@ priv struct Ppu {
   mut obp1 : U8
   mut wy : U8
   mut wx : U8
+  mut wly : U8
   vram : FixedArray[U8]
   oam : FixedArray[U8]
   buffer : FixedArray[UInt]
@@ -97,6 +98,7 @@ fn Ppu::new() -> Ppu {
     obp1: 0,
     wy: 0,
     wx: 0,
+    wly: 0,
     vram: FixedArray::make(0x2000, 0),
     oam: FixedArray::make(0xA0, 0),
     buffer: FixedArray::make(LCD_WIDTH * LCD_HEIGHT, 0xffffffff),
@@ -218,6 +220,43 @@ fn Ppu::render_bg(self : Self) -> Unit {
 }
 
 ///|
+fn Ppu::render_window(self : Self, bg_prio : FixedArray[Bool]) -> Unit {
+  if (self.lcdc & BG_WINDOW_ENABLE) == 0 ||
+    (self.lcdc & WINDOW_ENABLE) == 0 ||
+    self.wy > self.ly {
+    return
+  }
+
+  let mut wly_add = (0 : U8)
+  let y = self.wly.to_int()
+  for i in 0..<LCD_WIDTH {
+    let x = i - (self.wx.to_int() - 7)
+    if x < 0 {
+      continue
+    }
+
+    wly_add = 1
+
+    let tile_idx = self.get_tile_idx_from_tile_map(
+      (self.lcdc & WINDOW_TILE_MAP) > 0,
+      y >> 3,
+      x >> 3,
+    )
+
+    let pixel = self.get_pixel_from_tile(tile_idx, y & 7, x & 7).to_int()
+    self.buffer[LCD_WIDTH * self.ly.to_int() + i] = match
+      (self.bgp >> (pixel << 1)) & 0b11 {
+      0b00 => 0xFFFFFFFF
+      0b01 => 0xFFAAAAAA
+      0b10 => 0xFF555555
+      _ => 0xFF000000
+    }
+    bg_prio[i] = pixel != 0
+  }
+  self.wly += wly_add
+}
+
+///|
 fn Ppu::check_lyc_eq_ly(self : Self) -> Unit {
   if self.ly == self.lyc {
     self.stat = self.stat | LYC_EQ_LY
@@ -255,6 +294,7 @@ fn Ppu::emulate_cycle(self : Self) -> Bool {
       if self.ly > 153 {
         ret = true
         self.ly = 0
+        self.wly = 0
         self.mode = Mode::OamScan
         self.cycles = 20
       } else {
