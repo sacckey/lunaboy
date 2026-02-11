@@ -15,11 +15,12 @@ priv struct Lcd {
   _window : @sdl.SDL_Window
   renderer : @sdl.SDL_Renderer
   texture : @sdl.SDL_Texture
+  event : @sdl.SDL_Event
 }
 
 ///|
 fn Lcd::new() -> Self {
-  ignore(@sdl.sdl_Init(@sdl.SDL_INIT_VIDEO))
+  @sdl.sdl_Init(@sdl.SDL_INIT_VIDEO) |> ignore
 
   let window = @sdl.sdl_CreateWindow(
     "Luna Boy",
@@ -36,14 +37,22 @@ fn Lcd::new() -> Self {
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
   )
-  ignore(@sdl.sdl_SetTextureScaleMode(texture, @sdl.SDL_SCALEMODE_NEAREST))
+  @sdl.sdl_SetTextureScaleMode(texture, @sdl.SDL_SCALEMODE_NEAREST) |> ignore
 
-  Lcd::{ renderer, _window: window, texture }
+  let event = @sdl.new_sdl_event()
+
+  Lcd::{ renderer, _window: window, texture, event }
 }
 
 ///|
-fn Lcd::draw(self : Self, pixels : FixedArray[UInt]) -> Unit {
-  @sdl.sdl_PumpEvents()
+fn Lcd::draw(self : Self, pixels : FixedArray[UInt]) -> Bool {
+  while @sdl.sdl_PollEvent(self.event) {
+    match self.event.get_type() {
+      @sdl.SDL_EVENT_QUIT | @sdl.SDL_EVENT_WINDOW_CLOSE_REQUESTED => return true
+      _ => ()
+    }
+  }
+
   let src_rect = @sdl.SDL_FRect::{
     x: 0.0,
     y: 0.0,
@@ -57,17 +66,17 @@ fn Lcd::draw(self : Self, pixels : FixedArray[UInt]) -> Unit {
     h: Float::from_int(SCREEN_HEIGHT * SCALE),
   }
 
-  ignore(
-    @sdl.sdl_UpdateTexture(
-      self.texture,
-      @sdl.SDL_Rect::{ x: 0, y: 0, w: SCREEN_WIDTH, h: SCREEN_HEIGHT },
-      as_void_ptr(pixels),
-      SCREEN_WIDTH * 4,
-    ),
+  @sdl.sdl_UpdateTexture(
+    self.texture,
+    @sdl.SDL_Rect::{ x: 0, y: 0, w: SCREEN_WIDTH, h: SCREEN_HEIGHT },
+    as_void_ptr(pixels),
+    SCREEN_WIDTH * 4,
   )
-  ignore(@sdl.sdl_RenderClear(self.renderer))
-  ignore(
-    @sdl.sdl_RenderTexture(self.renderer, self.texture, src_rect, dst_rect),
-  )
-  ignore(@sdl.sdl_RenderPresent(self.renderer))
+  |> ignore
+  @sdl.sdl_RenderClear(self.renderer) |> ignore
+  @sdl.sdl_RenderTexture(self.renderer, self.texture, src_rect, dst_rect)
+  |> ignore
+  @sdl.sdl_RenderPresent(self.renderer) |> ignore
+
+  false
 }

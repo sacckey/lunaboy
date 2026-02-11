@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub fn run_emulator() -> Unit raise
+pub fn run_emulator(String?) -> Unit raise
 
 // Errors
 
@@ -36,6 +36,9 @@ pub impl @debug.Debug for Registers
 type StackFrame
 pub impl Default for StackFrame
 pub impl Show for StackFrame
+
+type Timer
+pub impl Default for Timer
 
 // Type aliases
 

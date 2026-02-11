@@ -15,18 +15,23 @@ priv struct Emulator {
 }
 
 ///|
-pub fn run_emulator() -> Unit raise {
-  let rom = @fs.read_file_to_bytes("lib/dmg_bootrom.bin")
-  let bootrom = Bootrom::new(rom.to_fixedarray())
-  let emulator = Emulator::new(bootrom)
+pub fn run_emulator(rom_path : String?) -> Unit raise {
+  let bootrom = Bootrom::new(
+    @fs.read_file_to_bytes("lib/dmg_bootrom.bin").to_fixedarray(),
+  )
+
+  let resolved_rom_path = rom_path.unwrap_or("lib/roms/hello-world.gb")
+  let rom = @fs.read_file_to_bytes(resolved_rom_path).to_fixedarray()
+  let emulator = Emulator::new(bootrom, rom)
 
   emulator.run()
 }
 
 ///|
-fn Emulator::new(bootrom : Bootrom) -> Self {
+fn Emulator::new(bootrom : Bootrom, rom : FixedArray[U8]) -> Self {
   let lcd = Lcd::new()
-  let bus = Bus::new(bootrom)
+  let cartridge = Cartridge::new(rom)
+  let bus = Bus::new(bootrom, cartridge)
   let cpu = Cpu::new()
 
   Emulator::{ cpu, bus, lcd }
@@ -36,8 +41,11 @@ fn Emulator::new(bootrom : Bootrom) -> Self {
 fn Emulator::run(self : Self) -> Unit {
   while true {
     self.cpu.emulate_cycle(self.bus)
+    self.bus.timer.emulate_cycle(self.cpu.interrupts)
     if self.bus.ppu.emulate_cycle() {
-      self.lcd.draw(self.bus.ppu.buffer)
+      if self.lcd.draw(self.bus.ppu.buffer) {
+        break
+      }
     }
   }
 }
