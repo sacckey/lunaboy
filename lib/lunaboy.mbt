@@ -9,10 +9,9 @@ const M_CYCLE_NANOS : U16 = 953 // M_CYCLE_CLOCK * 1_000_000_000 / CPU_CLOCK_HZ
 
 ///|
 priv struct Emulator {
-  sdl : Sdl
+  platform : Platform
   cpu : Cpu
   bus : Bus
-  lcd : Lcd
 }
 
 ///|
@@ -30,13 +29,12 @@ pub fn run_emulator(rom_path : String?) -> Unit raise {
 
 ///|
 fn Emulator::new(bootrom : Bootrom, rom : FixedArray[U8]) -> Self {
-  let sdl = Sdl::new()
-  let lcd = Lcd::new()
+  let platform = Platform::new()
   let cartridge = Cartridge::new(rom)
   let bus = Bus::new(bootrom, cartridge)
   let cpu = Cpu::new()
 
-  Emulator::{ sdl, cpu, bus, lcd }
+  Emulator::{ platform, cpu, bus }
 }
 
 ///|
@@ -50,28 +48,27 @@ fn Emulator::run(self : Self) -> Unit {
       )
     }
     if self.bus.ppu.emulate_cycle(self.cpu.interrupts) {
-      self.lcd.draw(self.bus.ppu.buffer)
-      if self.sdl.poll_quit() {
+      self.platform.draw_lcd(self.bus.ppu.buffer)
+      if self.platform.poll_quit() {
         break
       }
       self.key_input_check()
     }
   }
 
-  self.lcd.clear()
-  self.sdl.clear()
+  self.platform.clear()
 }
 
 ///|
 fn Emulator::key_input_check(self : Self) -> Unit {
-  self.sdl.update_keyboard()
+  self.platform.update_input()
 
   self.bus.joypad.direction_button(
-    0xFF - self.sdl.direction_pressed(),
+    0xFF - self.platform.direction_pressed(),
     self.cpu.interrupts,
   )
   self.bus.joypad.action_button(
-    0xFF - self.sdl.action_pressed(),
+    0xFF - self.platform.action_pressed(),
     self.cpu.interrupts,
   )
 }

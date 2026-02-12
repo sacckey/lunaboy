@@ -32,3 +32,7 @@ void lunaboy_free_sdl_event(SDL_Event *event) {
     free(event);
   }
 }
+
+bool lunaboy_texture_is_null(SDL_Texture *texture) {
+  return texture == NULL;
+}
