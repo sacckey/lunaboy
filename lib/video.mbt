@@ -15,6 +15,8 @@ priv struct Video {
   window : @sdl.SDL_Window
   renderer : @sdl.SDL_Renderer
   texture : @sdl.SDL_Texture
+  src_rect : @sdl.SDL_FRect
+  dst_rect : @sdl.SDL_FRect
 }
 
 ///|
@@ -23,24 +25,27 @@ fn Video::new(
   renderer : @sdl.SDL_Renderer,
   texture : @sdl.SDL_Texture,
 ) -> Self {
-  { window, renderer, texture }
+  {
+    window,
+    renderer,
+    texture,
+    src_rect: @sdl.SDL_FRect::{
+      x: 0.0,
+      y: 0.0,
+      w: Float::from_int(SCREEN_WIDTH),
+      h: Float::from_int(SCREEN_HEIGHT),
+    },
+    dst_rect: @sdl.SDL_FRect::{
+      x: 0.0,
+      y: 0.0,
+      w: Float::from_int(SCREEN_WIDTH * SCALE),
+      h: Float::from_int(SCREEN_HEIGHT * SCALE),
+    },
+  }
 }
 
 ///|
 fn Video::draw(self : Self, pixels : FixedArray[UInt]) -> Unit {
-  let src_rect = @sdl.SDL_FRect::{
-    x: 0.0,
-    y: 0.0,
-    w: Float::from_int(SCREEN_WIDTH),
-    h: Float::from_int(SCREEN_HEIGHT),
-  }
-  let dst_rect = @sdl.SDL_FRect::{
-    x: 0.0,
-    y: 0.0,
-    w: Float::from_int(SCREEN_WIDTH * SCALE),
-    h: Float::from_int(SCREEN_HEIGHT * SCALE),
-  }
-
   @sdl.sdl_UpdateTexture(
     self.texture,
     @sdl.SDL_Rect::{ x: 0, y: 0, w: SCREEN_WIDTH, h: SCREEN_HEIGHT },
@@ -49,7 +54,12 @@ fn Video::draw(self : Self, pixels : FixedArray[UInt]) -> Unit {
   )
   |> ignore
   @sdl.sdl_RenderClear(self.renderer) |> ignore
-  @sdl.sdl_RenderTexture(self.renderer, self.texture, src_rect, dst_rect)
+  @sdl.sdl_RenderTexture(
+    self.renderer,
+    self.texture,
+    self.src_rect,
+    self.dst_rect,
+  )
   |> ignore
   @sdl.sdl_RenderPresent(self.renderer) |> ignore
 }
