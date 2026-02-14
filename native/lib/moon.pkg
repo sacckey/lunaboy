@@ -1,7 +1,7 @@
 import {
   "moonbitlang/x/fs",
   "Kaida-Amethyst/sdl3/lib" @sdl,
-  "sacckey/lunaboy/lib" @core
+  "sacckey/lunaboy/lib" @core,
 }
 
 options(

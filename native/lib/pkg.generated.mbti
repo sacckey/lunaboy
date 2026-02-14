@@ -2,6 +2,7 @@
 package "sacckey/lunaboy/native/lib"
 
 // Values
+pub fn run_emulator(String?) -> Unit raise
 
 // Errors
 

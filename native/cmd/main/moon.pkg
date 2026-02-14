@@ -1,6 +1,6 @@
 import {
   "moonbitlang/x/sys",
-  "sacckey/lunaboy/native/lib" @lib
+  "sacckey/lunaboy/native/lib" @lib,
 }
 
 options(

@@ -6,7 +6,15 @@ import {
 }
 
 // Values
+pub fn init_emulator(FixedArray[Byte], FixedArray[Byte]) -> Unit
+
+pub fn lcd_buffer() -> FixedArray[UInt]
+
 pub fn run_emulator(String?) -> Unit raise
+
+pub fn set_input(Byte, Byte) -> Unit
+
+pub fn step_until_frame() -> Unit
 
 // Errors
 
