@@ -8,9 +8,15 @@ import {
 // Values
 pub fn init_emulator(FixedArray[Byte], FixedArray[Byte]) -> Unit
 
+pub fn init_extern(Int, Int) -> Unit
+
 pub fn lcd_buffer() -> FixedArray[UInt]
 
+pub fn run_frame_extern() -> Unit
+
 pub fn set_input(Byte, Byte) -> Unit
+
+pub fn set_input_extern(Int, Int) -> Unit
 
 pub fn step_until_frame() -> Unit
 
