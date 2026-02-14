@@ -1,8 +1,0 @@
-import {
-  "moonbitlang/x/sys",
-  "sacckey/lunaboy/lib" @lib,
-}
-
-options(
-  "is-main": true,
-)
