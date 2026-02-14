@@ -9,10 +9,17 @@ const M_CYCLE_NANOS : U16 = 953 // M_CYCLE_CLOCK * 1_000_000_000 / CPU_CLOCK_HZ
 
 ///|
 priv struct Emulator {
-  platform : Platform
   cpu : Cpu
   bus : Bus
 }
+
+///|
+priv struct GlobalState {
+  mut emulator : Emulator?
+}
+
+///|
+let gs : GlobalState = { emulator: None }
 
 ///|
 pub fn run_emulator(rom_path : String?) -> Unit raise {
@@ -29,12 +36,58 @@ pub fn run_emulator(rom_path : String?) -> Unit raise {
 
 ///|
 fn Emulator::new(bootrom : Bootrom, rom : FixedArray[U8]) -> Self {
-  let platform = Platform::new()
   let cartridge = Cartridge::new(rom)
   let bus = Bus::new(bootrom, cartridge)
   let cpu = Cpu::new()
 
-  Emulator::{ platform, cpu, bus }
+  Emulator::{ cpu, bus }
+}
+
+///|
+fn get_emulator() -> Emulator {
+  gs.emulator.unwrap()
+}
+
+///|
+pub fn init_emulator(bootrom : FixedArray[U8], rom : FixedArray[U8]) -> Unit {
+  gs.emulator = Some(Emulator::new(Bootrom::new(bootrom), rom))
+}
+
+///|
+pub fn step_until_frame() -> Unit {
+  let emulator = get_emulator()
+
+  while true {
+    emulator.cpu.emulate_cycle(emulator.bus)
+    emulator.bus.timer.emulate_cycle(emulator.cpu.interrupts)
+    if emulator.bus.ppu.oam_dma is Some(addr) {
+      emulator.bus.ppu.oam_dma_emulate_cycle(
+        emulator.bus.read(emulator.cpu.interrupts, addr),
+      )
+    }
+    if emulator.bus.ppu.emulate_cycle(emulator.cpu.interrupts) {
+      break
+    }
+  }
+}
+
+///|
+pub fn lcd_buffer() -> FixedArray[UInt] {
+  get_emulator().bus.ppu.buffer
+}
+
+///|
+pub fn set_input(direction_pressed : U8, action_pressed : U8) -> Unit {
+  let emulator = get_emulator()
+
+  emulator.bus.joypad.direction_button(
+    0xFF - direction_pressed,
+    emulator.cpu.interrupts,
+  )
+  emulator.bus.joypad.action_button(
+    0xFF - action_pressed,
+    emulator.cpu.interrupts,
+  )
 }
 
 ///|
@@ -48,27 +101,7 @@ fn Emulator::run(self : Self) -> Unit {
       )
     }
     if self.bus.ppu.emulate_cycle(self.cpu.interrupts) {
-      self.platform.draw_lcd(self.bus.ppu.buffer)
-      if self.platform.poll_quit() {
-        break
-      }
-      self.key_input_check()
+
     }
   }
-
-  self.platform.clear()
-}
-
-///|
-fn Emulator::key_input_check(self : Self) -> Unit {
-  self.platform.update_input()
-
-  self.bus.joypad.direction_button(
-    0xFF - self.platform.direction_pressed(),
-    self.cpu.interrupts,
-  )
-  self.bus.joypad.action_button(
-    0xFF - self.platform.action_pressed(),
-    self.cpu.interrupts,
-  )
 }

@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/x/sys",
+  "sacckey/lunaboy/native/lib" @lib,
+}
+
+options(
+  "is-main": true,
+  link: {
+    "native": {
+      "cc-link-flags": "-L/opt/homebrew/opt/sdl3/lib -lSDL3 -Wl,-rpath,/opt/homebrew/opt/sdl3/lib",
+    },
+  },
+)

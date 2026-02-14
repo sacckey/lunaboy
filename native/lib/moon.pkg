@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/x/fs",
+  "Kaida-Amethyst/sdl3/lib" @sdl,
+  "sacckey/lunaboy/lib" @core,
+}
+
+options(
+  "native-stub": [ "lunaboy_native.c" ],
+)

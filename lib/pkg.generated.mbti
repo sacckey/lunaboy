@@ -6,7 +6,15 @@ import {
 }
 
 // Values
+pub fn init_emulator(FixedArray[Byte], FixedArray[Byte]) -> Unit
+
+pub fn lcd_buffer() -> FixedArray[UInt]
+
 pub fn run_emulator(String?) -> Unit raise
+
+pub fn set_input(Byte, Byte) -> Unit
+
+pub fn step_until_frame() -> Unit
 
 // Errors
 
@@ -41,6 +49,9 @@ type Timer
 pub impl Default for Timer
 
 // Type aliases
+pub type U16 = UInt16
+
+pub type U8 = Byte
 
 // Traits
 
