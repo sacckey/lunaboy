@@ -83,12 +83,12 @@ fn Platform::update_input(self : Self) -> Unit {
 }
 
 ///|
-fn Platform::direction_pressed(self : Self) -> U8 {
+fn Platform::direction_pressed(self : Self) -> @core.U8 {
   self.input.direction_mask()
 }
 
 ///|
-fn Platform::action_pressed(self : Self) -> U8 {
+fn Platform::action_pressed(self : Self) -> @core.U8 {
   self.input.action_mask()
 }
 

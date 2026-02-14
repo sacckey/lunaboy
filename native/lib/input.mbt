@@ -23,12 +23,12 @@ const SDL_SCANCODE_U : Int = 24
 const SDL_SCANCODE_I : Int = 12
 
 ///|
-extern "C" fn read_keys4(a : Int, b : Int, c : Int, d : Int) -> U8 = "lunaboy_read_keys4"
+extern "C" fn read_keys4(a : Int, b : Int, c : Int, d : Int) -> @core.U8 = "lunaboy_read_keys4"
 
 ///|
 priv struct Input {
-  mut direction_pressed : U8
-  mut action_pressed : U8
+  mut direction_pressed : @core.U8
+  mut action_pressed : @core.U8
 }
 
 ///|
@@ -55,11 +55,11 @@ fn Input::update(self : Self) -> Unit {
 }
 
 ///|
-fn Input::direction_mask(self : Self) -> U8 {
+fn Input::direction_mask(self : Self) -> @core.U8 {
   self.direction_pressed
 }
 
 ///|
-fn Input::action_mask(self : Self) -> U8 {
+fn Input::action_mask(self : Self) -> @core.U8 {
   self.action_pressed
 }

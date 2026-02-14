@@ -1,8 +1,8 @@
 ///|
-type U8 = Byte
+pub type U8 = Byte
 
 ///|
-type U16 = UInt16
+pub type U16 = UInt16
 
 ///|
 fn U8::to_i8(self : U8) -> Int16 {

@@ -41,6 +41,9 @@ type Timer
 pub impl Default for Timer
 
 // Type aliases
+pub type U16 = UInt16
+
+pub type U8 = Byte
 
 // Traits
 
