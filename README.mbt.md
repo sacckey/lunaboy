@@ -1,6 +1,6 @@
 <br>
 <p align="center">
-  <img src="/resource/logo/logo.svg" width="480px">
+  <img src="https://raw.githubusercontent.com/sacckey/lunaboy/535efa43bafc54f08578955ffb69c0d7e59299b1/resource/logo/logo.svg" width="480px">
 </p>
 <br>
 
@@ -10,7 +10,7 @@ A Game Boy emulator written in MoonBit
 
 ## Screenshots
 <div align="center">
-  <img src="/resource/screenshots/tobu.png" width="400px"/>
+  <img src="https://raw.githubusercontent.com/sacckey/lunaboy/refs/heads/main/resource/screenshots/tobu.png" width="400px"/>
 </div>
 
 ## Run on Native
