@@ -34,6 +34,7 @@ fn Emulator::new(rom : FixedArray[U8]) -> Self {
 fn Emulator::step_m_cycle(self : Self) -> Bool {
   self.cpu.emulate_cycle(self.bus)
   self.bus.timer.emulate_cycle(self.cpu.interrupts)
+  self.bus.apu.emulate_cycle()
   if self.bus.ppu.oam_dma is Some(addr) {
     self.bus.ppu.oam_dma_emulate_cycle(self.bus.read(self.cpu.interrupts, addr))
   }
