@@ -81,6 +81,11 @@ romSelectBox.addEventListener('change', (event) => {
   worker.postMessage({ type: 'loadPreInstalledRom', romName: event.target.value });
 });
 
+const throttleToggle = document.getElementById('throttle-toggle');
+throttleToggle.addEventListener('change', (event) => {
+  worker.postMessage({ type: 'setThrottle', enabled: event.target.checked });
+});
+
 const times = [];
 const fpsDisplay = document.getElementById('fps-display');
 worker.onmessage = (event) => {
@@ -102,6 +107,7 @@ worker.onmessage = (event) => {
     romSelectBox.disabled = false;
     romInput.disabled = false;
     document.getElementById('rom-upload-button').classList.remove('disabled');
+    worker.postMessage({ type: 'setThrottle', enabled: throttleToggle.checked });
     worker.postMessage({ type: 'loadPreInstalledRom', romName: romSelectBox.value });
     worker.postMessage({ type: 'startLunaboy' });
   }

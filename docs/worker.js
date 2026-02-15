@@ -16,6 +16,9 @@ const FRAME_WIDTH = 160;
 const FRAME_HEIGHT = 144;
 const FRAMEBUFFER_SIZE = FRAME_WIDTH * FRAME_HEIGHT * 4;
 const WASM_PAGE_SIZE = 65536;
+const M_CYCLE_NANOS = 953;
+const MAX_CATCHUP_NANOS = 250_000_000;
+const MAX_CYCLES_PER_STEP = 8_192;
 const IMPORT_OBJECT = {
   spectest: {
     print_char: (_ch) => {},
@@ -30,6 +33,9 @@ class Lunaboy {
     this.loaded = false;
     this.memory = null;
     this.exports = null;
+    this.throttleEnabled = true;
+    this.startTimeNanos = 0;
+    this.elapsedMachineNanos = 0;
     this.loopHandle = null;
   }
 
@@ -54,13 +60,23 @@ class Lunaboy {
     this.exports = instance.exports;
     this.memory = instance.exports['moonbit.memory'];
 
-    if (!this.exports.init_extern || !this.exports.run_frame_extern || !this.exports.set_input_extern) {
-      throw new Error('Missing required exports: init_extern, run_frame_extern, set_input_extern');
+    if (!this.exports.init_extern || !this.exports.run_frame_extern || !this.exports.run_cycles_extern || !this.exports.set_input_extern) {
+      throw new Error('Missing required exports: init_extern, run_frame_extern, run_cycles_extern, set_input_extern');
     }
     if (!this.memory) {
       throw new Error('Missing export memory: moonbit.memory');
     }
 
+  }
+
+  resetClock() {
+    this.startTimeNanos = performance.now() * 1_000_000;
+    this.elapsedMachineNanos = 0;
+  }
+
+  setThrottleEnabled(enabled) {
+    this.throttleEnabled = enabled;
+    this.resetClock();
   }
 
   initWithRom(romData) {
@@ -70,15 +86,10 @@ class Lunaboy {
     mem.set(romData, 0);
     this.exports.init_extern(romLength);
     this.loaded = true;
+    this.resetClock();
   }
 
-  runFrame() {
-    if (!this.loaded) {
-      return;
-    }
-
-    this.exports.set_input_extern(this.directionKey, this.actionKey);
-    this.exports.run_frame_extern();
+  sendFrame() {
     const frame = new Uint8ClampedArray(
       this.memory.buffer,
       0,
@@ -87,6 +98,36 @@ class Lunaboy {
     const copied = new Uint8ClampedArray(FRAMEBUFFER_SIZE);
     copied.set(frame);
     postMessage({ type: 'pixelData', data: copied.buffer }, [copied.buffer]);
+  }
+
+  runUnthrottledFrame() {
+    this.exports.run_frame_extern();
+    this.sendFrame();
+  }
+
+  runThrottled() {
+    const elapsedRealNanos = performance.now() * 1_000_000 - this.startTimeNanos;
+    const targetNanos = Math.min(
+      elapsedRealNanos,
+      this.elapsedMachineNanos + MAX_CATCHUP_NANOS,
+    );
+
+    let frameCount = 0;
+    while (targetNanos > this.elapsedMachineNanos) {
+      const remainingNanos = targetNanos - this.elapsedMachineNanos;
+      let cycles = Math.floor(remainingNanos / M_CYCLE_NANOS);
+      if (cycles <= 0) {
+        break;
+      }
+
+      cycles = Math.min(cycles, MAX_CYCLES_PER_STEP);
+      frameCount += this.exports.run_cycles_extern(cycles);
+      this.elapsedMachineNanos += cycles * M_CYCLE_NANOS;
+    }
+
+    if (frameCount > 0) {
+      this.sendFrame();
+    }
   }
 
   start() {
@@ -111,7 +152,14 @@ class Lunaboy {
     }
 
     try {
-      this.runFrame();
+      if (this.loaded) {
+        this.exports.set_input_extern(this.directionKey, this.actionKey);
+        if (this.throttleEnabled) {
+          this.runThrottled();
+        } else {
+          this.runUnthrottledFrame();
+        }
+      }
     } catch (error) {
       this.stop();
       postMessage({ type: 'error', message: error.message });
@@ -157,6 +205,10 @@ self.addEventListener('message', async (event) => {
 
   if (event.data.type === 'stopLunaboy') {
     lunaboy.stop();
+  }
+
+  if (event.data.type === 'setThrottle') {
+    lunaboy.setThrottleEnabled(event.data.enabled);
   }
 
   if (event.data.type === 'keydown' || event.data.type === 'keyup') {

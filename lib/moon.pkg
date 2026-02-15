@@ -5,7 +5,12 @@ options(
   link: {
     "wasm-gc": {
       "export-memory-name": "moonbit.memory",
-      "exports": [ "init_extern", "run_frame_extern", "set_input_extern" ],
+      "exports": [
+        "init_extern",
+        "run_frame_extern",
+        "run_cycles_extern",
+        "set_input_extern",
+      ],
     },
   },
 )

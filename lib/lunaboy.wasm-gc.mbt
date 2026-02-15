@@ -12,6 +12,14 @@ fn load_bytes_from_memory(offset : Int, length : Int) -> FixedArray[U8] {
 }
 
 ///|
+fn copy_lcd_buffer_to_memory() -> Unit {
+  let pixels = lcd_buffer()
+  for i = 0; i < pixels.length(); i = i + 1 {
+    store32(i << 2, pixels[i].reinterpret_as_int())
+  }
+}
+
+///|
 pub fn init_extern(rom_length : Int) -> Unit {
   let rom = load_bytes_from_memory(0, rom_length)
   init_emulator(rom)
@@ -20,11 +28,16 @@ pub fn init_extern(rom_length : Int) -> Unit {
 ///|
 pub fn run_frame_extern() -> Unit {
   step_until_frame()
-  let pixels = lcd_buffer()
+  copy_lcd_buffer_to_memory()
+}
 
-  for i = 0; i < pixels.length(); i = i + 1 {
-    store32(i << 2, pixels[i].reinterpret_as_int())
+///|
+pub fn run_cycles_extern(cycles : Int) -> Int {
+  let frames = run_cycles(cycles)
+  if frames > 0 {
+    copy_lcd_buffer_to_memory()
   }
+  frames
 }
 
 ///|
