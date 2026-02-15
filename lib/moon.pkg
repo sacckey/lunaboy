@@ -1,3 +1,11 @@
 import {
-  "moonbitlang/x/fs",
 }
+
+options(
+  link: {
+    "wasm-gc": {
+      "export-memory-name": "moonbit.memory",
+      "exports": [ "init_extern", "run_frame_extern", "set_input_extern" ],
+    },
+  },
+)
