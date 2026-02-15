@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "deps": {},
   "readme": "README.mbt.md",
-  "repository": "",
+  "repository": "https://github.com/sacckey/lunaboy",
   "license": "MIT",
-  "keywords": [],
-  "description": "",
+  "keywords": ["emulator", "gameboy", "gameboy-emulator"],
+  "description": "A Game Boy emulator written in MoonBit",
+  "homepage": "https://sacckey.github.io/lunaboy/",
   "preferred-target": "wasm-gc"
 }
