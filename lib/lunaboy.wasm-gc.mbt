@@ -12,10 +12,9 @@ fn load_bytes_from_memory(offset : Int, length : Int) -> FixedArray[U8] {
 }
 
 ///|
-pub fn init_extern(bootrom_length : Int, rom_length : Int) -> Unit {
-  let bootrom = load_bytes_from_memory(0, bootrom_length)
-  let rom = load_bytes_from_memory(bootrom_length, rom_length)
-  init_emulator(bootrom, rom)
+pub fn init_extern(rom_length : Int) -> Unit {
+  let rom = load_bytes_from_memory(0, rom_length)
+  init_emulator(rom)
 }
 
 ///|

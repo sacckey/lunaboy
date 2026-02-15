@@ -22,11 +22,11 @@ priv struct GlobalState {
 let gs : GlobalState = { emulator: None }
 
 ///|
-fn Emulator::new(bootrom : Bootrom, rom : FixedArray[U8]) -> Self {
+fn Emulator::new(rom : FixedArray[U8]) -> Self {
   let cartridge = Cartridge::new(rom)
-  let bus = Bus::new(bootrom, cartridge)
+  let bus = Bus::new(cartridge)
   let cpu = Cpu::new()
-
+  cpu.fetch(bus)
   Emulator::{ cpu, bus }
 }
 
@@ -36,8 +36,8 @@ fn get_emulator() -> Emulator {
 }
 
 ///|
-pub fn init_emulator(bootrom : FixedArray[U8], rom : FixedArray[U8]) -> Unit {
-  gs.emulator = Some(Emulator::new(Bootrom::new(bootrom), rom))
+pub fn init_emulator(rom : FixedArray[U8]) -> Unit {
+  gs.emulator = Some(Emulator::new(rom))
 }
 
 ///|

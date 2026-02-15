@@ -107,15 +107,15 @@ priv struct Ppu {
 ///|
 fn Ppu::new() -> Ppu {
   Ppu::{
-    cycles: 20,
-    mode: Mode::OamScan,
-    lcdc: 0,
+    cycles: 0x13,
+    mode: Mode::Drawing,
+    lcdc: 0x91,
     stat: 0,
     scy: 0,
     scx: 0,
-    ly: 0,
+    ly: 0x62,
     lyc: 0,
-    bgp: 0,
+    bgp: 0xFC,
     obp0: 0,
     obp1: 0,
     wy: 0,

@@ -10,7 +10,23 @@ struct Registers {
   mut f : U8
   mut h : U8
   mut l : U8
-} derive(Debug, Default)
+} derive(Debug)
+
+///|
+impl Default for Registers with default() -> Registers {
+  Registers::{
+    pc: 0x0100,
+    sp: 0xFFFE,
+    a: 0x01,
+    b: 0x00,
+    c: 0x13,
+    d: 0x00,
+    e: 0xD8,
+    f: 0xB0,
+    h: 0x01,
+    l: 0x4D,
+  }
+}
 
 ///|
 fn Registers::af(self : Self) -> U16 {

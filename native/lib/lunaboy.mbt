@@ -1,20 +1,14 @@
 ///|
-fn load_bootrom() -> FixedArray[Byte] raise {
-  @fs.read_file_to_bytes("lib/dmg_bootrom.bin").to_fixedarray()
-}
-
-///|
 fn load_rom(path : String) -> FixedArray[Byte] raise {
   @fs.read_file_to_bytes(path).to_fixedarray()
 }
 
 ///|
 pub fn run_emulator(rom_path : String?) -> Unit raise {
-  let bootrom = load_bootrom()
   let resolved_rom_path = rom_path.unwrap_or("lib/roms/hello-world.gb")
   let rom = load_rom(resolved_rom_path)
 
-  @core.init_emulator(bootrom, rom)
+  @core.init_emulator(rom)
   let platform = Platform::new()
 
   while true {

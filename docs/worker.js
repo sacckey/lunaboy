@@ -30,16 +30,7 @@ class Lunaboy {
     this.loaded = false;
     this.memory = null;
     this.exports = null;
-    this.bootrom = null;
     this.loopHandle = null;
-  }
-
-  async fetchBootrom() {
-    const response = await fetch('./dmg_bootrom.bin');
-    if (!response.ok) {
-      throw new Error('Failed to fetch bootrom: ./dmg_bootrom.bin');
-    }
-    this.bootrom = new Uint8Array(await response.arrayBuffer());
   }
 
   ensureMemory(requiredBytes) {
@@ -70,23 +61,14 @@ class Lunaboy {
       throw new Error('Missing export memory: moonbit.memory');
     }
 
-    await this.fetchBootrom();
   }
 
   initWithRom(romData) {
-    if (!this.bootrom) {
-      throw new Error('Boot ROM is not loaded');
-    }
-
-    const bootromLength = this.bootrom.length;
     const romLength = romData.length;
-    const totalLength = bootromLength + romLength;
-
-    this.ensureMemory(totalLength);
+    this.ensureMemory(romLength);
     const mem = new Uint8Array(this.memory.buffer);
-    mem.set(this.bootrom, 0);
-    mem.set(romData, bootromLength);
-    this.exports.init_extern(bootromLength, romLength);
+    mem.set(romData, 0);
+    this.exports.init_extern(romLength);
     this.loaded = true;
   }
 
