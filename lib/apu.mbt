@@ -33,7 +33,6 @@ priv struct Apu {
   channel4 : Channel4
   samples : FixedArray[Float]
   mut sample_idx : Int
-  mut callback : ((FixedArray[Float]) -> Unit)?
 }
 
 ///|
@@ -50,12 +49,12 @@ fn Apu::new() -> Self {
     channel4: Channel4::default(),
     samples: FixedArray::make(SAMPLES * 2, 0.0),
     sample_idx: 0,
-    callback: None,
   }
 }
 
 ///|
-fn Apu::emulate_cycle(self : Self) -> Unit {
+fn Apu::emulate_cycle(self : Self) -> Bool {
+  let mut produced = false
   for _i in 0..<4 {
     self.cycles += 1
 
@@ -98,12 +97,11 @@ fn Apu::emulate_cycle(self : Self) -> Unit {
     }
 
     if self.sample_idx >= SAMPLES {
-      if self.callback is Some(cb) {
-        cb(self.samples)
-      }
       self.sample_idx = 0
+      produced = true
     }
   }
+  produced
 }
 
 ///|
