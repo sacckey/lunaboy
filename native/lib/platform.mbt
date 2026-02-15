@@ -1,4 +1,7 @@
 ///|
+const SDL_INIT_AUDIO : UInt = 0x00000010
+
+///|
 const SDL_INIT_VIDEO : UInt = 0x00000020
 
 ///|
@@ -17,7 +20,7 @@ priv struct Platform {
 
 ///|
 fn Platform::new() -> Self {
-  if !@sdl.sdl_Init(SDL_INIT_VIDEO) {
+  if !@sdl.sdl_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) {
     panic()
   }
 
@@ -64,6 +67,11 @@ fn Platform::new() -> Self {
 ///|
 fn Platform::draw_lcd(self : Self, pixels : FixedArray[UInt]) -> Unit {
   self.video.draw(pixels)
+}
+
+///|
+fn Platform::queue_audio(self : Self, samples : FixedArray[Float]) -> Unit {
+  self.audio.queue(samples)
 }
 
 ///|

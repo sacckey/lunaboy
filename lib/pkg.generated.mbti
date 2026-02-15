@@ -12,6 +12,8 @@ pub fn init_extern(Int) -> Unit
 
 pub fn lcd_buffer() -> FixedArray[UInt]
 
+pub fn pop_audio_samples() -> FixedArray[Float]?
+
 pub fn run_cycles(Int) -> Int
 
 pub fn run_cycles_extern(Int) -> Int

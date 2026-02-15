@@ -6,6 +6,7 @@ priv struct Bus {
   ppu : Ppu
   timer : Timer
   joypad : Joypad
+  apu : Apu
 }
 
 ///|
@@ -17,6 +18,7 @@ fn Bus::new(cartridge : Cartridge) -> Self {
     ppu: Ppu::new(),
     timer: Timer::default(),
     joypad: Joypad::new(),
+    apu: Apu::new(),
   }
 }
 
@@ -30,6 +32,7 @@ fn Bus::read(self : Self, interrupts : Interrupts, addr : U16) -> U8 {
     0xFE00..=0xFE9F => self.ppu.read(addr)
     0xFF00 => self.joypad.read()
     0xFF04..=0xFF07 => self.timer.read(addr)
+    0xFF10..=0xFF26 | 0xFF30..=0xFF3F => self.apu.read(addr)
     0xFF0F => interrupts.read(addr)
     0xFF40..=0xFF4B => self.ppu.read(addr)
     0xFF80..=0xFFFE => self.hram.read(addr)
@@ -53,6 +56,7 @@ fn Bus::write(
     0xFE00..=0xFE9F => self.ppu.write(addr, val)
     0xFF00 => self.joypad.write(addr, val)
     0xFF04..=0xFF07 => self.timer.write(addr, val)
+    0xFF10..=0xFF26 | 0xFF30..=0xFF3F => self.apu.write(addr, val)
     0xFF0F => interrupts.write(addr, val)
     0xFF40..=0xFF4B => self.ppu.write(addr, val)
     0xFF80..=0xFFFE => self.hram.write(addr, val)
