@@ -18,7 +18,12 @@ priv struct Interrupts {
   mut ime : Bool
   mut int_flags : U8
   mut int_enable : U8
-} derive(Default)
+}
+
+///|
+impl Default for Interrupts with default() -> Interrupts {
+  { ime: false, int_flags: 0x01, int_enable: 0x00 }
+}
 
 ///|
 fn Interrupts::irq(self : Self, val : U8) -> Unit {

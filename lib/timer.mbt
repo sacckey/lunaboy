@@ -1,11 +1,16 @@
 ///|
-struct Timer {
+priv struct Timer {
   mut div : U16
   mut tima : U8
   mut overflow : Bool
   mut tma : U8
   mut tac : U8
-} derive(Default)
+}
+
+///|
+impl Default for Timer with default() -> Timer {
+  { div: 0xD520, tima: 0x00, overflow: false, tma: 0x00, tac: 0x00 }
+}
 
 ///|
 fn Timer::emulate_cycle(self : Self, interrupts : Interrupts) -> Unit {
