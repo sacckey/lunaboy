@@ -1,6 +1,3 @@
-import { DefaultRubyVM } from 'https://cdn.jsdelivr.net/npm/@ruby/wasm-wasi@2.7.1/dist/browser/+esm';
-import { File } from 'https://cdn.jsdelivr.net/npm/@bjorn3/browser_wasi_shim@0.3.0/+esm';
-
 const DIRECTION_KEY_MASKS = {
   'KeyD': 0b0001, // Right
   'KeyA': 0b0010, // Left
@@ -15,66 +12,169 @@ const ACTION_KEY_MASKS = {
   'KeyI': 0b1000  // Start
 };
 
-class Rubyboy {
-  constructor() {
-    this.wasmUrl = 'https://proxy.sacckey.dev/rubyboy.wasm';
+const FRAME_WIDTH = 160;
+const FRAME_HEIGHT = 144;
+const FRAMEBUFFER_SIZE = FRAME_WIDTH * FRAME_HEIGHT * 4;
+const WASM_PAGE_SIZE = 65536;
+const IMPORT_OBJECT = {
+  spectest: {
+    print_char: (_ch) => {},
+  },
+};
 
-    this.directionKey = 0b1111;
-    this.actionKey = 0b1111;
+class Lunaboy {
+  constructor() {
+    this.directionKey = 0b0000;
+    this.actionKey = 0b0000;
+    this.running = false;
+    this.loaded = false;
+    this.memory = null;
+    this.exports = null;
+    this.bootrom = null;
+    this.loopHandle = null;
+  }
+
+  async fetchBootrom() {
+    const response = await fetch('./dmg_bootrom.bin');
+    if (!response.ok) {
+      throw new Error('Failed to fetch bootrom: ./dmg_bootrom.bin');
+    }
+    this.bootrom = new Uint8Array(await response.arrayBuffer());
+  }
+
+  ensureMemory(requiredBytes) {
+    const currentBytes = this.memory.buffer.byteLength;
+    if (currentBytes >= requiredBytes) {
+      return;
+    }
+    const growBytes = requiredBytes - currentBytes;
+    const pages = Math.ceil(growBytes / WASM_PAGE_SIZE);
+    this.memory.grow(pages);
   }
 
   async init() {
-    let response = await fetch('./rubyboy.wasm');
-    if (!response.ok) {
-      response = await fetch(this.wasmUrl);
+    const wasmResponse = await fetch('./lib.wasm');
+    if (!wasmResponse.ok) {
+      throw new Error('Failed to fetch wasm: ./lib.wasm');
+    }
+    const wasmBytes = new Uint8Array(await wasmResponse.arrayBuffer());
+    const module = await WebAssembly.compile(wasmBytes);
+    const instance = await WebAssembly.instantiate(module, IMPORT_OBJECT);
+    this.exports = instance.exports;
+    this.memory = instance.exports['moonbit.memory'];
+
+    if (!this.exports.init_extern || !this.exports.run_frame_extern || !this.exports.set_input_extern) {
+      throw new Error('Missing required exports: init_extern, run_frame_extern, set_input_extern');
+    }
+    if (!this.memory) {
+      throw new Error('Missing export memory: moonbit.memory');
     }
 
-    const module = await WebAssembly.compileStreaming(response)
-    const { vm, wasi } = await DefaultRubyVM(module);
-    vm.eval(`
-      require 'js'
-      require_relative 'lib/executor'
-
-      $executor = Executor.new
-    `);
-
-    this.vm = vm;
-    this.rootDir = wasi.fds[3].dir
+    await this.fetchBootrom();
   }
 
-  sendPixelData() {
-    this.vm.eval(`$executor.exec(${this.directionKey}, ${this.actionKey})`);
+  initWithRom(romData) {
+    if (!this.bootrom) {
+      throw new Error('Boot ROM is not loaded');
+    }
 
-    const file = this.rootDir.contents.get('video.data');
-    const bytes = file.data;
+    const bootromLength = this.bootrom.length;
+    const romLength = romData.length;
+    const totalLength = bootromLength + romLength;
 
-    postMessage({ type: 'pixelData', data: bytes.buffer }, [bytes.buffer]);
+    this.ensureMemory(totalLength);
+    const mem = new Uint8Array(this.memory.buffer);
+    mem.set(this.bootrom, 0);
+    mem.set(romData, bootromLength);
+    this.exports.init_extern(bootromLength, romLength);
+    this.loaded = true;
+  }
+
+  runFrame() {
+    if (!this.loaded) {
+      return;
+    }
+
+    this.exports.set_input_extern(this.directionKey, this.actionKey);
+    this.exports.run_frame_extern();
+    const frame = new Uint8ClampedArray(
+      this.memory.buffer,
+      0,
+      FRAMEBUFFER_SIZE,
+    );
+    const copied = new Uint8ClampedArray(FRAMEBUFFER_SIZE);
+    copied.set(frame);
+    postMessage({ type: 'pixelData', data: copied.buffer }, [copied.buffer]);
+  }
+
+  start() {
+    if (this.running) {
+      return;
+    }
+    this.running = true;
+    this.emulationLoop();
+  }
+
+  stop() {
+    this.running = false;
+    if (this.loopHandle !== null) {
+      clearTimeout(this.loopHandle);
+      this.loopHandle = null;
+    }
   }
 
   emulationLoop() {
-    this.sendPixelData();
-    setTimeout(this.emulationLoop.bind(this), 0);
+    if (!this.running) {
+      return;
+    }
+
+    try {
+      this.runFrame();
+    } catch (error) {
+      this.stop();
+      postMessage({ type: 'error', message: error.message });
+      return;
+    }
+
+    this.loopHandle = setTimeout(this.emulationLoop.bind(this), 0);
+  }
+
+  async loadPreInstalledRom(romName) {
+    const romPath = `./roms/${romName}`;
+    const response = await fetch(romPath);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch rom: ${romPath}`);
+    }
+    this.initWithRom(new Uint8Array(await response.arrayBuffer()));
+  }
+
+  loadUploadedRom(data) {
+    this.initWithRom(new Uint8Array(data));
   }
 }
 
-const rubyboy = new Rubyboy();
+const lunaboy = new Lunaboy();
 
 self.addEventListener('message', async (event) => {
-  if (event.data.type === 'initRubyboy') {
+  if (event.data.type === 'initLunaboy') {
     try {
-      await rubyboy.init();
+      await lunaboy.init();
       postMessage({ type: 'initialized', message: 'ok' });
     } catch (error) {
       postMessage({ type: 'error', message: error.message });
     }
   }
 
-  if (event.data.type === 'startRubyboy') {
+  if (event.data.type === 'startLunaboy') {
     try {
-      rubyboy.emulationLoop();
+      lunaboy.start();
     } catch (error) {
       postMessage({ type: 'error', message: error.message });
     }
+  }
+
+  if (event.data.type === 'stopLunaboy') {
+    lunaboy.stop();
   }
 
   if (event.data.type === 'keydown' || event.data.type === 'keyup') {
@@ -84,32 +184,34 @@ self.addEventListener('message', async (event) => {
 
     if (directionKeyMask) {
       if (event.data.type === 'keydown') {
-        rubyboy.directionKey &= ~directionKeyMask;
+        lunaboy.directionKey |= directionKeyMask;
       } else {
-        rubyboy.directionKey |= directionKeyMask;
+        lunaboy.directionKey &= ~directionKeyMask;
       }
     }
 
     if (actionKeyMask) {
       if (event.data.type === 'keydown') {
-        rubyboy.actionKey &= ~actionKeyMask;
+        lunaboy.actionKey |= actionKeyMask;
       } else {
-        rubyboy.actionKey |= actionKeyMask;
+        lunaboy.actionKey &= ~actionKeyMask;
       }
     }
   }
 
   if (event.data.type === 'loadROM') {
-    const romFile = new File(new Uint8Array(event.data.data));
-    rubyboy.rootDir.contents.set('rom.data', romFile);
-    rubyboy.vm.eval(`
-      $executor.read_rom_from_virtual_fs
-    `);
+    try {
+      lunaboy.loadUploadedRom(event.data.data);
+    } catch (error) {
+      postMessage({ type: 'error', message: error.message });
+    }
   }
 
   if (event.data.type === 'loadPreInstalledRom') {
-    rubyboy.vm.eval(`
-      $executor.read_pre_installed_rom("${event.data.romName}")
-    `);
+    try {
+      await lunaboy.loadPreInstalledRom(event.data.romName);
+    } catch (error) {
+      postMessage({ type: 'error', message: error.message });
+    }
   }
 });

@@ -1,5 +1,5 @@
 body {
-  background-color: #f0d0ce;
+  background-color: #ebcee6;
   display: flex;
   margin: 0;
   font-family: 'Helvetica', 'Arial', sans-serif;
@@ -19,7 +19,7 @@ body {
 }
 
 .gameboy {
-  background-color: #cc342d;
+  background-color: #b61298;
   border-radius: 10px 10px 70px 10px;
   padding: 25px 20px 40px;
   box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
@@ -33,7 +33,7 @@ body {
 }
 
 .screen-container {
-  background-color: #f0d0ce;
+  background-color: #ebcee6;
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 80px;
@@ -42,7 +42,7 @@ body {
 }
 
 #canvas {
-  background-color: #881e1a;
+  background-color: #860e70;
   display: block;
   width: 100%;
   height: auto;
@@ -59,13 +59,13 @@ body {
   width: 100px;
   height: 100px;
   position: relative;
-  background-color: #881e1a;
+  background-color: #860e70;
   border-radius: 50%;
 }
 
 .d-pad-button {
   position: absolute;
-  background-color: #550e0c;
+  background-color: #580a49;
   border: none;
   cursor: pointer;
 }
@@ -99,7 +99,7 @@ body {
 }
 
 .buttons {
-  background-color: #881e1a;
+  background-color: #860e70;
   border-radius: 50%;
   width: 100px;
   height: 100px;
@@ -108,7 +108,7 @@ body {
 
 .action-button {
   position: absolute;
-  background-color: #ff6b66;
+  background-color: #ff7be7;
   border: none;
   border-radius: 50%;
   width: 35px;
@@ -134,7 +134,7 @@ body {
 }
 
 .start-select button {
-  background-color: #881e1a;
+  background-color: #860e70;
   border: none;
   width: 50px;
   height: 15px;
@@ -191,7 +191,7 @@ body {
 }
 
 .footer {
-  background-color: #cc342d;
+  background-color: #9e1084;
   color: white;
   text-align: center;
   width: 100%;

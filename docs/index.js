@@ -1,4 +1,4 @@
-const worker = new Worker('worker.js', { type: 'module' });
+const worker = new Worker('./worker.js', { type: 'module' });
 
 const SCALE = 2;
 const canvas = document.getElementById('canvas');
@@ -102,7 +102,8 @@ worker.onmessage = (event) => {
     romSelectBox.disabled = false;
     romInput.disabled = false;
     document.getElementById('rom-upload-button').classList.remove('disabled');
-    worker.postMessage({ type: 'startRubyboy' });
+    worker.postMessage({ type: 'loadPreInstalledRom', romName: romSelectBox.value });
+    worker.postMessage({ type: 'startLunaboy' });
   }
 
   if (event.data.type === 'error') {
@@ -110,4 +111,4 @@ worker.onmessage = (event) => {
   }
 };
 
-worker.postMessage({ type: 'initRubyboy' });
+worker.postMessage({ type: 'initLunaboy' });
