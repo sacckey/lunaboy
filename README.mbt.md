@@ -1,11 +1,35 @@
+<br>
+<p align="center">
+  <img src="/resource/logo/logo.svg" width="480px">
+</p>
+<br>
+
 A Game Boy emulator written in MoonBit
 
-## Requirements
-[SDL3](https://github.com/libsdl-org/SDL/blob/main/INSTALL.md)
+**[Try the demo in your browser!](https://sacckey.github.io/lunaboy/)** - Powered by WasmGC
 
-## Usage
+## Screenshots
+<div align="center">
+  <img src="/resource/screenshots/tobu.png" width="400px"/>
+</div>
 
-    $ moon run ./cmd/main/ --target native <rom_path>
+## Run on Native
+
+Native backend requires [SDL3](https://github.com/libsdl-org/SDL/blob/main/INSTALL.md).
+
+```sh
+moon run ./native/cmd/main --manifest-path ./native/moon.mod.json <rom_path>
+```
+
+## Run on WasmGC
+
+From the `docs` directory, start a local HTTP server:
+
+```sh
+python3 -m http.server 8080
+```
+
+Then open `http://localhost:8080` in your browser.
 
 | Key   | Button |
 | :---: | :----: |
