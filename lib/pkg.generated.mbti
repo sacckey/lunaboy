@@ -12,6 +12,10 @@ pub fn init_extern(Int) -> Unit
 
 pub fn lcd_buffer() -> FixedArray[UInt]
 
+pub fn run_cycles(Int) -> Int
+
+pub fn run_cycles_extern(Int) -> Int
+
 pub fn run_frame_extern() -> Unit
 
 pub fn set_input(Byte, Byte) -> Unit

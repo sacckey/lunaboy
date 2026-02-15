@@ -31,6 +31,16 @@ fn Emulator::new(rom : FixedArray[U8]) -> Self {
 }
 
 ///|
+fn Emulator::step_m_cycle(self : Self) -> Bool {
+  self.cpu.emulate_cycle(self.bus)
+  self.bus.timer.emulate_cycle(self.cpu.interrupts)
+  if self.bus.ppu.oam_dma is Some(addr) {
+    self.bus.ppu.oam_dma_emulate_cycle(self.bus.read(self.cpu.interrupts, addr))
+  }
+  self.bus.ppu.emulate_cycle(self.cpu.interrupts)
+}
+
+///|
 fn get_emulator() -> Emulator {
   gs.emulator.unwrap()
 }
@@ -45,17 +55,26 @@ pub fn step_until_frame() -> Unit {
   let emulator = get_emulator()
 
   while true {
-    emulator.cpu.emulate_cycle(emulator.bus)
-    emulator.bus.timer.emulate_cycle(emulator.cpu.interrupts)
-    if emulator.bus.ppu.oam_dma is Some(addr) {
-      emulator.bus.ppu.oam_dma_emulate_cycle(
-        emulator.bus.read(emulator.cpu.interrupts, addr),
-      )
-    }
-    if emulator.bus.ppu.emulate_cycle(emulator.cpu.interrupts) {
+    if emulator.step_m_cycle() {
       break
     }
   }
+}
+
+///|
+pub fn run_cycles(cycles : Int) -> Int {
+  if cycles <= 0 {
+    return 0
+  }
+
+  let emulator = get_emulator()
+  let mut frame_count = 0
+  for _i in 0..<cycles {
+    if emulator.step_m_cycle() {
+      frame_count += 1
+    }
+  }
+  frame_count
 }
 
 ///|
