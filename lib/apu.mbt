@@ -8,6 +8,9 @@ const SAMPLES : Int = 1024
 const SAMPLE_PERIOD_T_CYCLES : Int = 4_194_304 / SAMPLE_RATE
 
 ///|
+const FS_PERIOD_T_CYCLES : Int = 0x2000
+
+///|
 let wave_duty : ReadOnlyArray[ReadOnlyArray[Float]] = [
   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0], // 12.5%
   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0], // 25%
@@ -25,7 +28,8 @@ priv struct Apu {
   mut enabled : Bool
   mut nr50 : U8
   mut nr51 : U8
-  mut cycles : Int
+  mut fs_cycles : Int
+  mut sampling_cycles : Int
   mut fs : U8
   channel1 : Channel1
   channel2 : Channel2
@@ -41,7 +45,8 @@ fn Apu::new() -> Self {
     enabled: false,
     nr50: 0,
     nr51: 0,
-    cycles: 0,
+    fs_cycles: 0,
+    sampling_cycles: 0,
     fs: 0,
     channel1: Channel1::default(),
     channel2: Channel2::default(),
@@ -56,23 +61,25 @@ fn Apu::new() -> Self {
 fn Apu::emulate_cycle(self : Self) -> Bool {
   let mut produced = false
   for _i in 0..<4 {
-    self.cycles += 1
+    self.fs_cycles += 1
+    self.sampling_cycles += 1
 
     self.channel1.emulate_t_cycle()
     self.channel2.emulate_t_cycle()
     self.channel3.emulate_t_cycle()
     self.channel4.emulate_t_cycle()
 
-    if (self.cycles & 0x1FFF) == 0 {
+    if self.fs_cycles >= FS_PERIOD_T_CYCLES {
       self.channel1.emulate_fs_cycle(self.fs)
       self.channel2.emulate_fs_cycle(self.fs)
       self.channel3.emulate_fs_cycle(self.fs)
       self.channel4.emulate_fs_cycle(self.fs)
-      self.cycles = 0
+      self.fs_cycles -= FS_PERIOD_T_CYCLES
       self.fs = (self.fs + 1) & 7
     }
 
-    if self.cycles % SAMPLE_PERIOD_T_CYCLES == 0 {
+    if self.sampling_cycles >= SAMPLE_PERIOD_T_CYCLES {
+      self.sampling_cycles -= SAMPLE_PERIOD_T_CYCLES
       let left_sample = (
           Float::from_byte(bit(self.nr51, 7)) * self.channel4.dac_output() +
           Float::from_byte(bit(self.nr51, 6)) * self.channel3.dac_output() +
@@ -166,6 +173,8 @@ fn Apu::write(self : Self, addr : U16, val : U8) -> Unit {
           a += 1
         }
       } else if enabled && !self.enabled {
+        self.fs_cycles = 0
+        self.sampling_cycles = 0
         self.fs = 0
         self.channel1.wave_duty_position = 0
         self.channel2.wave_duty_position = 0
