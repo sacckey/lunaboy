@@ -8,6 +8,87 @@ const tmpCanvas = document.createElement('canvas');
 const tmpCanvasContext = tmpCanvas.getContext('2d');
 tmpCanvas.width = canvas.width;
 tmpCanvas.height = canvas.height;
+class AudioPlayer {
+  constructor() {
+    this.context = null;
+    this.processor = null;
+    this.startingPromise = null;
+    this.muted = true;
+  }
+
+  isReady() {
+    return this.context !== null && this.processor !== null;
+  }
+
+  async ensureStarted() {
+    if (this.isReady()) {
+      if (this.context.state === 'suspended') {
+        await this.context.resume();
+      }
+      return;
+    }
+    if (this.startingPromise) {
+      await this.startingPromise;
+      return;
+    }
+
+    this.startingPromise = (async () => {
+      this.context = new window.AudioContext({
+        sampleRate: 48_000,
+        latencyHint: 'interactive',
+      });
+      await this.context.audioWorklet.addModule('./audio-worklet.js');
+      this.processor = new AudioWorkletNode(
+        this.context,
+        'lunaboy-audio-processor',
+        { outputChannelCount: [2] },
+      );
+      this.processor.connect(this.context.destination);
+
+      if (this.context.state === 'suspended') {
+        await this.context.resume();
+      }
+    })();
+
+    try {
+      await this.startingPromise;
+    } finally {
+      this.startingPromise = null;
+    }
+  }
+
+  setMuted(muted) {
+    this.muted = muted;
+    if (muted) {
+      if (this.context && this.context.state === 'running') {
+        this.context.suspend().catch(() => {});
+      }
+      return;
+    }
+
+    this.ensureStarted().catch((error) => {
+      console.error('Audio initialization failed:', error);
+    });
+  }
+
+  enqueue(buffer) {
+    if (this.muted || !this.processor) {
+      return;
+    }
+    this.processor.port.postMessage(buffer, [buffer]);
+  }
+}
+
+const audioPlayer = new AudioPlayer();
+
+function postToWorker(type, payload = {}, transferables = null) {
+  const message = { type, ...payload };
+  if (transferables) {
+    worker.postMessage(message, transferables);
+    return;
+  }
+  worker.postMessage(message);
+}
 
 // Display "LOADING..."
 (() => {
@@ -38,83 +119,102 @@ tmpCanvas.height = canvas.height;
   });
 })();
 
-document.addEventListener('keydown', (event) => {
-  worker.postMessage({ type: 'keydown', code: event.code });
-});
-document.addEventListener('keyup', (event) => {
-  worker.postMessage({ type: 'keyup', code: event.code });
-});
+function postInput(type, event) {
+  event.preventDefault();
+  postToWorker(type, { code: event.currentTarget.dataset.code });
+}
 
-const handleButtonPress = (event) => {
-  event.preventDefault();
-  worker.postMessage({ type: 'keydown', code: event.target.dataset.code });
+for (const type of ['keydown', 'keyup']) {
+  document.addEventListener(type, (event) => {
+    postToWorker(type, { code: event.code });
+  });
 }
-const handleButtonRelease = (event) => {
-  event.preventDefault();
-  worker.postMessage({ type: 'keyup', code: event.target.dataset.code });
-}
+
 const buttons = document.querySelectorAll('.d-pad-button, .action-button, .start-select-button');
-buttons.forEach(button => {
-  button.addEventListener('mousedown', handleButtonPress);
-  button.addEventListener('mouseup', handleButtonRelease);
-  button.addEventListener('touchstart', handleButtonPress);
-  button.addEventListener('touchend', handleButtonRelease);
+const buttonInputBindings = [
+  ['mousedown', 'keydown'],
+  ['mouseup', 'keyup'],
+  ['touchstart', 'keydown'],
+  ['touchend', 'keyup'],
+];
+buttons.forEach((button) => {
+  buttonInputBindings.forEach(([domEventType, inputType]) => {
+    button.addEventListener(domEventType, (event) => postInput(inputType, event));
+  });
 });
 
 const romInput = document.getElementById('rom-input');
-romInput.addEventListener('change', (event) => {
+romInput.addEventListener('change', async (event) => {
   const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      const romData = e.target.result;
-      worker.postMessage({ type: 'loadROM', data: romData }, [romData]);
-    };
-
-    reader.readAsArrayBuffer(file);
+  if (!file) {
+    return;
   }
+  const romData = await file.arrayBuffer();
+  postToWorker('loadROM', { data: romData }, [romData]);
 });
 
 const romSelectBox = document.getElementById('rom-select-box');
 romSelectBox.addEventListener('change', (event) => {
-  worker.postMessage({ type: 'loadPreInstalledRom', romName: event.target.value });
+  postToWorker('loadPreInstalledRom', { romName: event.target.value });
 });
 
 const throttleToggle = document.getElementById('throttle-toggle');
 throttleToggle.addEventListener('change', (event) => {
-  worker.postMessage({ type: 'setThrottle', enabled: event.target.checked });
+  postToWorker('setThrottle', { enabled: event.target.checked });
 });
+
+const muteToggle = document.getElementById('mute-toggle');
+muteToggle.addEventListener('change', (event) => {
+  audioPlayer.setMuted(event.target.checked);
+});
+audioPlayer.setMuted(muteToggle.checked);
 
 const times = [];
 const fpsDisplay = document.getElementById('fps-display');
-worker.onmessage = (event) => {
-  if (event.data.type === 'pixelData') {
-    const pixelData = new Uint8ClampedArray(event.data.data);
-    const imageData = new ImageData(pixelData, 160, 144);
-    tmpCanvasContext.putImageData(imageData, 0, 0);
-    canvasContext.drawImage(tmpCanvas, 0, 0);
+const romUploadButton = document.getElementById('rom-upload-button');
 
-    const now = performance.now();
-    while (times.length > 0 && times[0] <= now - 1000) {
-      times.shift();
-    }
-    times.push(now);
-    fpsDisplay.innerText = times.length.toString();
+function updateFps() {
+  const now = performance.now();
+  while (times.length > 0 && times[0] <= now - 1000) {
+    times.shift();
   }
+  times.push(now);
+  fpsDisplay.innerText = times.length.toString();
+}
 
-  if (event.data.type === 'initialized') {
+function handlePixelData(data) {
+  const pixelData = new Uint8ClampedArray(data.data);
+  const imageData = new ImageData(pixelData, 160, 144);
+  tmpCanvasContext.putImageData(imageData, 0, 0);
+  canvasContext.drawImage(tmpCanvas, 0, 0);
+  updateFps();
+}
+
+const workerMessageHandlers = {
+  audioData(data) {
+    audioPlayer.enqueue(data.data);
+  },
+  pixelData(data) {
+    handlePixelData(data);
+  },
+  initialized() {
     romSelectBox.disabled = false;
     romInput.disabled = false;
-    document.getElementById('rom-upload-button').classList.remove('disabled');
-    worker.postMessage({ type: 'setThrottle', enabled: throttleToggle.checked });
-    worker.postMessage({ type: 'loadPreInstalledRom', romName: romSelectBox.value });
-    worker.postMessage({ type: 'startLunaboy' });
-  }
+    romUploadButton.classList.remove('disabled');
+    postToWorker('setThrottle', { enabled: throttleToggle.checked });
+    postToWorker('loadPreInstalledRom', { romName: romSelectBox.value });
+    postToWorker('startLunaboy');
+  },
+  error(data) {
+    console.error('Error from Worker:', data.message);
+  },
+};
 
-  if (event.data.type === 'error') {
-    console.error('Error from Worker:', event.data.message);
+worker.onmessage = (event) => {
+  const handler = workerMessageHandlers[event.data.type];
+  if (handler) {
+    handler(event.data);
   }
 };
 
-worker.postMessage({ type: 'initLunaboy' });
+postToWorker('initLunaboy');

@@ -13,11 +13,9 @@ pub fn run_emulator(rom_path : String?) -> Unit raise {
 
   while true {
     @core.step_until_frame()
-    while true {
-      match @core.pop_audio_samples() {
-        Some(samples) => platform.queue_audio(samples)
-        None => break
-      }
+    match @core.pop_audio_samples() {
+      Some(samples) => platform.queue_audio(samples)
+      None => ()
     }
     platform.draw_lcd(@core.lcd_buffer())
     if platform.poll_quit() {

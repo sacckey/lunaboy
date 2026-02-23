@@ -8,6 +8,12 @@ const SAMPLES : Int = 1024
 const SAMPLE_PERIOD_T_CYCLES : Int = 4_194_304 / SAMPLE_RATE
 
 ///|
+const FS_PERIOD_T_CYCLES : Int = 0x2000
+
+///|
+const MASTER_GAIN : Float = 0.1
+
+///|
 let wave_duty : ReadOnlyArray[ReadOnlyArray[Float]] = [
   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0], // 12.5%
   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0], // 25%
@@ -25,13 +31,17 @@ priv struct Apu {
   mut enabled : Bool
   mut nr50 : U8
   mut nr51 : U8
-  mut cycles : Int
+  mut fs_cycles : Int
+  mut sampling_cycles : Int
   mut fs : U8
   channel1 : Channel1
   channel2 : Channel2
   channel3 : Channel3
   channel4 : Channel4
-  samples : FixedArray[Float]
+  samples0 : FixedArray[Float]
+  samples1 : FixedArray[Float]
+  mut write_buffer : Int
+  mut ready_buffer : Int
   mut sample_idx : Int
 }
 
@@ -41,38 +51,81 @@ fn Apu::new() -> Self {
     enabled: false,
     nr50: 0,
     nr51: 0,
-    cycles: 0,
+    fs_cycles: 0,
+    sampling_cycles: 0,
     fs: 0,
     channel1: Channel1::default(),
     channel2: Channel2::default(),
     channel3: Channel3::default(),
     channel4: Channel4::default(),
-    samples: FixedArray::make(SAMPLES * 2, 0.0),
+    samples0: FixedArray::make(SAMPLES * 2, 0.0),
+    samples1: FixedArray::make(SAMPLES * 2, 0.0),
+    write_buffer: 0,
+    ready_buffer: -1,
     sample_idx: 0,
   }
 }
 
 ///|
-fn Apu::emulate_cycle(self : Self) -> Bool {
-  let mut produced = false
+fn Apu::write_sample(
+  self : Self,
+  sample_idx : Int,
+  left : Float,
+  right : Float,
+) -> Unit {
+  let offset = sample_idx * 2
+  if self.write_buffer == 0 {
+    self.samples0[offset] = left
+    self.samples0[offset + 1] = right
+  } else {
+    self.samples1[offset] = left
+    self.samples1[offset + 1] = right
+  }
+}
+
+///|
+fn Apu::swap_buffers(self : Self) -> Unit {
+  self.ready_buffer = self.write_buffer
+  self.write_buffer = self.write_buffer ^ 1
+}
+
+///|
+fn Apu::take_samples(self : Self) -> FixedArray[Float]? {
+  match self.ready_buffer {
+    0 => {
+      self.ready_buffer = -1
+      Some(self.samples0)
+    }
+    1 => {
+      self.ready_buffer = -1
+      Some(self.samples1)
+    }
+    _ => None
+  }
+}
+
+///|
+fn Apu::emulate_cycle(self : Self) -> Unit {
   for _i in 0..<4 {
-    self.cycles += 1
+    self.fs_cycles += 1
+    self.sampling_cycles += 1
 
     self.channel1.emulate_t_cycle()
     self.channel2.emulate_t_cycle()
     self.channel3.emulate_t_cycle()
     self.channel4.emulate_t_cycle()
 
-    if (self.cycles & 0x1FFF) == 0 {
+    if self.fs_cycles >= FS_PERIOD_T_CYCLES {
       self.channel1.emulate_fs_cycle(self.fs)
       self.channel2.emulate_fs_cycle(self.fs)
       self.channel3.emulate_fs_cycle(self.fs)
       self.channel4.emulate_fs_cycle(self.fs)
-      self.cycles = 0
+      self.fs_cycles -= FS_PERIOD_T_CYCLES
       self.fs = (self.fs + 1) & 7
     }
 
-    if self.cycles % SAMPLE_PERIOD_T_CYCLES == 0 {
+    if self.sampling_cycles >= SAMPLE_PERIOD_T_CYCLES {
+      self.sampling_cycles -= SAMPLE_PERIOD_T_CYCLES
       let left_sample = (
           Float::from_byte(bit(self.nr51, 7)) * self.channel4.dac_output() +
           Float::from_byte(bit(self.nr51, 6)) * self.channel3.dac_output() +
@@ -91,17 +144,19 @@ fn Apu::emulate_cycle(self : Self) -> Bool {
       let left_volume = Float::from_byte((self.nr50 >> 4) & 0x7) / 7.0
       let right_volume = Float::from_byte(self.nr50 & 0x7) / 7.0
 
-      self.samples[self.sample_idx * 2] = left_volume * left_sample
-      self.samples[self.sample_idx * 2 + 1] = right_volume * right_sample
+      self.write_sample(
+        self.sample_idx,
+        left_volume * left_sample * MASTER_GAIN,
+        right_volume * right_sample * MASTER_GAIN,
+      )
       self.sample_idx += 1
     }
 
     if self.sample_idx >= SAMPLES {
       self.sample_idx = 0
-      produced = true
+      self.swap_buffers()
     }
   }
-  produced
 }
 
 ///|
@@ -166,6 +221,8 @@ fn Apu::write(self : Self, addr : U16, val : U8) -> Unit {
           a += 1
         }
       } else if enabled && !self.enabled {
+        self.fs_cycles = 0
+        self.sampling_cycles = 0
         self.fs = 0
         self.channel1.wave_duty_position = 0
         self.channel2.wave_duty_position = 0
