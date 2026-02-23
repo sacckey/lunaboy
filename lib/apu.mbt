@@ -35,7 +35,10 @@ priv struct Apu {
   channel2 : Channel2
   channel3 : Channel3
   channel4 : Channel4
-  samples : FixedArray[Float]
+  samples0 : FixedArray[Float]
+  samples1 : FixedArray[Float]
+  mut write_buffer : Int
+  mut ready_buffer : Int
   mut sample_idx : Int
 }
 
@@ -52,14 +55,54 @@ fn Apu::new() -> Self {
     channel2: Channel2::default(),
     channel3: Channel3::default(),
     channel4: Channel4::default(),
-    samples: FixedArray::make(SAMPLES * 2, 0.0),
+    samples0: FixedArray::make(SAMPLES * 2, 0.0),
+    samples1: FixedArray::make(SAMPLES * 2, 0.0),
+    write_buffer: 0,
+    ready_buffer: -1,
     sample_idx: 0,
   }
 }
 
 ///|
-fn Apu::emulate_cycle(self : Self) -> Bool {
-  let mut produced = false
+fn Apu::write_sample(
+  self : Self,
+  sample_idx : Int,
+  left : Float,
+  right : Float,
+) -> Unit {
+  let offset = sample_idx * 2
+  if self.write_buffer == 0 {
+    self.samples0[offset] = left
+    self.samples0[offset + 1] = right
+  } else {
+    self.samples1[offset] = left
+    self.samples1[offset + 1] = right
+  }
+}
+
+///|
+fn Apu::swap_buffers(self : Self) -> Unit {
+  self.ready_buffer = self.write_buffer
+  self.write_buffer = if self.write_buffer == 0 { 1 } else { 0 }
+}
+
+///|
+fn Apu::take_samples(self : Self) -> FixedArray[Float]? {
+  match self.ready_buffer {
+    0 => {
+      self.ready_buffer = -1
+      Some(self.samples0)
+    }
+    1 => {
+      self.ready_buffer = -1
+      Some(self.samples1)
+    }
+    _ => None
+  }
+}
+
+///|
+fn Apu::emulate_cycle(self : Self) -> Unit {
   for _i in 0..<4 {
     self.fs_cycles += 1
     self.sampling_cycles += 1
@@ -98,17 +141,19 @@ fn Apu::emulate_cycle(self : Self) -> Bool {
       let left_volume = Float::from_byte((self.nr50 >> 4) & 0x7) / 7.0
       let right_volume = Float::from_byte(self.nr50 & 0x7) / 7.0
 
-      self.samples[self.sample_idx * 2] = left_volume * left_sample
-      self.samples[self.sample_idx * 2 + 1] = right_volume * right_sample
+      self.write_sample(
+        self.sample_idx,
+        left_volume * left_sample,
+        right_volume * right_sample,
+      )
       self.sample_idx += 1
     }
 
     if self.sample_idx >= SAMPLES {
       self.sample_idx = 0
-      produced = true
+      self.swap_buffers()
     }
   }
-  produced
 }
 
 ///|

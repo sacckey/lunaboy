@@ -11,7 +11,6 @@ const M_CYCLE_NANOS : U16 = 953 // M_CYCLE_CLOCK * 1_000_000_000 / CPU_CLOCK_HZ
 priv struct Emulator {
   cpu : Cpu
   bus : Bus
-  mut pending_audio : FixedArray[Float]?
 }
 
 ///|
@@ -28,21 +27,14 @@ fn Emulator::new(rom : FixedArray[U8]) -> Self {
   let bus = Bus::new(cartridge)
   let cpu = Cpu::new()
   cpu.fetch(bus)
-  Emulator::{ cpu, bus, pending_audio: None }
-}
-
-///|
-fn clone_samples(samples : FixedArray[Float]) -> FixedArray[Float] {
-  FixedArray::makei(samples.length(), fn(i) { samples[i] })
+  Emulator::{ cpu, bus }
 }
 
 ///|
 fn Emulator::step_m_cycle(self : Self) -> Bool {
   self.cpu.emulate_cycle(self.bus)
   self.bus.timer.emulate_cycle(self.cpu.interrupts)
-  if self.bus.apu.emulate_cycle() {
-    self.pending_audio = Some(clone_samples(self.bus.apu.samples))
-  }
+  self.bus.apu.emulate_cycle()
   if self.bus.ppu.oam_dma is Some(addr) {
     self.bus.ppu.oam_dma_emulate_cycle(self.bus.read(self.cpu.interrupts, addr))
   }
@@ -107,12 +99,5 @@ pub fn set_input(direction_pressed : U8, action_pressed : U8) -> Unit {
 
 ///|
 pub fn pop_audio_samples() -> FixedArray[Float]? {
-  let emulator = get_emulator()
-  match emulator.pending_audio {
-    Some(samples) => {
-      emulator.pending_audio = None
-      Some(samples)
-    }
-    None => None
-  }
+  get_emulator().bus.apu.take_samples()
 }
