@@ -8,13 +8,10 @@ const tmpCanvas = document.createElement('canvas');
 const tmpCanvasContext = tmpCanvas.getContext('2d');
 tmpCanvas.width = canvas.width;
 tmpCanvas.height = canvas.height;
-const MAX_PENDING_AUDIO_BUFFERS = 4;
-
 class AudioPlayer {
   constructor() {
     this.context = null;
     this.processor = null;
-    this.pendingBuffers = [];
     this.startingPromise = null;
     this.muted = true;
   }
@@ -48,11 +45,6 @@ class AudioPlayer {
       );
       this.processor.connect(this.context.destination);
 
-      while (this.pendingBuffers.length > 0) {
-        const buffer = this.pendingBuffers.shift();
-        this.processor.port.postMessage(buffer, [buffer]);
-      }
-
       if (this.context.state === 'suspended') {
         await this.context.resume();
       }
@@ -68,7 +60,6 @@ class AudioPlayer {
   setMuted(muted) {
     this.muted = muted;
     if (muted) {
-      this.pendingBuffers.length = 0;
       if (this.context && this.context.state === 'running') {
         this.context.suspend().catch(() => {});
       }
@@ -81,17 +72,10 @@ class AudioPlayer {
   }
 
   enqueue(buffer) {
-    if (this.muted) {
+    if (this.muted || !this.processor) {
       return;
     }
-    if (this.processor) {
-      this.processor.port.postMessage(buffer, [buffer]);
-      return;
-    }
-    this.pendingBuffers.push(buffer);
-    if (this.pendingBuffers.length > MAX_PENDING_AUDIO_BUFFERS) {
-      this.pendingBuffers.shift();
-    }
+    this.processor.port.postMessage(buffer, [buffer]);
   }
 }
 
