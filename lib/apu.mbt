@@ -10,6 +10,8 @@ const SAMPLE_PERIOD_T_CYCLES : Int = 4_194_304 / SAMPLE_RATE
 ///|
 const FS_PERIOD_T_CYCLES : Int = 0x2000
 
+const MASTER_GAIN : Float = 0.1
+
 ///|
 let wave_duty : ReadOnlyArray[ReadOnlyArray[Float]] = [
   [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0], // 12.5%
@@ -143,8 +145,8 @@ fn Apu::emulate_cycle(self : Self) -> Unit {
 
       self.write_sample(
         self.sample_idx,
-        left_volume * left_sample,
-        right_volume * right_sample,
+        left_volume * left_sample * MASTER_GAIN,
+        right_volume * right_sample * MASTER_GAIN,
       )
       self.sample_idx += 1
     }
