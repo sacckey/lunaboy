@@ -21,8 +21,7 @@ extern "C" fn audio_close() -> Unit = "lunaboy_audio_close"
 
 ///|
 priv enum Audio {
-  Disabled
-  Enabled
+  Audio
 }
 
 ///|
@@ -32,33 +31,25 @@ fn log_audio_error(context : String) -> Unit {
 
 ///|
 fn Audio::new() -> Self {
-  if audio_open(SAMPLE_RATE, CHANNELS) {
-    Enabled
-  } else {
+  if !audio_open(SAMPLE_RATE, CHANNELS) {
     log_audio_error("failed to open audio")
-    Disabled
+    panic()
+  }
+  Audio
+}
+
+///|
+fn Audio::queue(_self : Self, samples : FixedArray[Float]) -> Unit {
+  while audio_queued_bytes() > MAX_QUEUED_BYTES {
+    @sdl.sdl_Delay(1)
+  }
+  if !audio_queue(as_void_ptr(samples), samples.length() * 4) {
+    log_audio_error("failed to queue audio data")
+    panic()
   }
 }
 
 ///|
-fn Audio::queue(self : Self, samples : FixedArray[Float]) -> Unit {
-  match self {
-    Disabled => ()
-    Enabled => {
-      while audio_queued_bytes() > MAX_QUEUED_BYTES {
-        @sdl.sdl_Delay(1)
-      }
-      if !audio_queue(as_void_ptr(samples), samples.length() * 4) {
-        log_audio_error("failed to queue audio data")
-      }
-    }
-  }
-}
-
-///|
-fn Audio::clear(self : Self) -> Unit {
-  match self {
-    Disabled => ()
-    Enabled => audio_close()
-  }
+fn Audio::clear(_self : Self) -> Unit {
+  audio_close()
 }
