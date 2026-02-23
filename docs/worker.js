@@ -15,6 +15,10 @@ const ACTION_KEY_MASKS = {
 const FRAME_WIDTH = 160;
 const FRAME_HEIGHT = 144;
 const FRAMEBUFFER_SIZE = FRAME_WIDTH * FRAME_HEIGHT * 4;
+const AUDIO_BUFFER_OFFSET = FRAMEBUFFER_SIZE;
+const AUDIO_BUFFER_SAMPLES = 1024 * 2;
+const AUDIO_BUFFER_SIZE = AUDIO_BUFFER_SAMPLES * 4;
+const MIN_REQUIRED_MEMORY = AUDIO_BUFFER_OFFSET + AUDIO_BUFFER_SIZE;
 const WASM_PAGE_SIZE = 65536;
 const M_CYCLE_NANOS = 953;
 const MAX_CATCHUP_NANOS = 250_000_000;
@@ -60,8 +64,8 @@ class Lunaboy {
     this.exports = instance.exports;
     this.memory = instance.exports['moonbit.memory'];
 
-    if (!this.exports.init_extern || !this.exports.run_frame_extern || !this.exports.run_cycles_extern || !this.exports.set_input_extern) {
-      throw new Error('Missing required exports: init_extern, run_frame_extern, run_cycles_extern, set_input_extern');
+    if (!this.exports.init_extern || !this.exports.run_frame_extern || !this.exports.run_cycles_extern || !this.exports.set_input_extern || !this.exports.pop_audio_extern) {
+      throw new Error('Missing required exports: init_extern, run_frame_extern, run_cycles_extern, set_input_extern, pop_audio_extern');
     }
     if (!this.memory) {
       throw new Error('Missing export memory: moonbit.memory');
@@ -81,7 +85,7 @@ class Lunaboy {
 
   initWithRom(romData) {
     const romLength = romData.length;
-    this.ensureMemory(romLength);
+    this.ensureMemory(Math.max(romLength, MIN_REQUIRED_MEMORY));
     const mem = new Uint8Array(this.memory.buffer);
     mem.set(romData, 0);
     this.exports.init_extern(romLength);
@@ -100,8 +104,30 @@ class Lunaboy {
     postMessage({ type: 'pixelData', data: copied.buffer }, [copied.buffer]);
   }
 
+  sendAudio(length) {
+    const samples = new Float32Array(
+      this.memory.buffer,
+      AUDIO_BUFFER_OFFSET,
+      length,
+    );
+    const copied = new Float32Array(length);
+    copied.set(samples);
+    postMessage({ type: 'audioData', data: copied.buffer }, [copied.buffer]);
+  }
+
+  drainAudio() {
+    while (true) {
+      const sampleLength = this.exports.pop_audio_extern();
+      if (sampleLength <= 0) {
+        break;
+      }
+      this.sendAudio(sampleLength);
+    }
+  }
+
   runUnthrottledFrame() {
     this.exports.run_frame_extern();
+    this.drainAudio();
     this.sendFrame();
   }
 
@@ -122,6 +148,7 @@ class Lunaboy {
 
       cycles = Math.min(cycles, MAX_CYCLES_PER_STEP);
       frameCount += this.exports.run_cycles_extern(cycles);
+      this.drainAudio();
       this.elapsedMachineNanos += cycles * M_CYCLE_NANOS;
     }
 

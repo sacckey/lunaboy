@@ -9,6 +9,90 @@ const tmpCanvasContext = tmpCanvas.getContext('2d');
 tmpCanvas.width = canvas.width;
 tmpCanvas.height = canvas.height;
 
+class AudioPlayer {
+  constructor() {
+    this.context = null;
+    this.processor = null;
+    this.pendingBuffers = [];
+    this.startingPromise = null;
+    this.muted = true;
+  }
+
+  isReady() {
+    return this.context !== null && this.processor !== null;
+  }
+
+  async ensureStarted() {
+    if (this.isReady()) {
+      if (this.context.state === 'suspended') {
+        await this.context.resume();
+      }
+      return;
+    }
+    if (this.startingPromise) {
+      await this.startingPromise;
+      return;
+    }
+
+    this.startingPromise = (async () => {
+      this.context = new window.AudioContext({ sampleRate: 48_000 });
+      await this.context.audioWorklet.addModule('./audio-worklet.js');
+      this.processor = new AudioWorkletNode(
+        this.context,
+        'lunaboy-audio-processor',
+        { outputChannelCount: [2] },
+      );
+      this.processor.connect(this.context.destination);
+
+      while (this.pendingBuffers.length > 0) {
+        const buffer = this.pendingBuffers.shift();
+        this.processor.port.postMessage(buffer, [buffer]);
+      }
+
+      if (this.context.state === 'suspended') {
+        await this.context.resume();
+      }
+    })();
+
+    try {
+      await this.startingPromise;
+    } finally {
+      this.startingPromise = null;
+    }
+  }
+
+  setMuted(muted) {
+    this.muted = muted;
+    if (muted) {
+      this.pendingBuffers.length = 0;
+      if (this.context && this.context.state === 'running') {
+        this.context.suspend().catch(() => {});
+      }
+      return;
+    }
+
+    this.ensureStarted().catch((error) => {
+      console.error('Audio initialization failed:', error);
+    });
+  }
+
+  enqueue(buffer) {
+    if (this.muted) {
+      return;
+    }
+    if (this.processor) {
+      this.processor.port.postMessage(buffer, [buffer]);
+      return;
+    }
+    this.pendingBuffers.push(buffer);
+    if (this.pendingBuffers.length > 64) {
+      this.pendingBuffers.shift();
+    }
+  }
+}
+
+const audioPlayer = new AudioPlayer();
+
 // Display "LOADING..."
 (() => {
   const str = `
@@ -86,9 +170,19 @@ throttleToggle.addEventListener('change', (event) => {
   worker.postMessage({ type: 'setThrottle', enabled: event.target.checked });
 });
 
+const muteToggle = document.getElementById('mute-toggle');
+muteToggle.addEventListener('change', (event) => {
+  audioPlayer.setMuted(event.target.checked);
+});
+audioPlayer.setMuted(muteToggle.checked);
+
 const times = [];
 const fpsDisplay = document.getElementById('fps-display');
 worker.onmessage = (event) => {
+  if (event.data.type === 'audioData') {
+    audioPlayer.enqueue(event.data.data);
+  }
+
   if (event.data.type === 'pixelData') {
     const pixelData = new Uint8ClampedArray(event.data.data);
     const imageData = new ImageData(pixelData, 160, 144);
