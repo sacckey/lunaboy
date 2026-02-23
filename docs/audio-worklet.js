@@ -1,4 +1,4 @@
-const BUFFERED_FRAMES = 16_384;
+const BUFFERED_FRAMES = 2_048;
 const BUFFER_MASK = BUFFERED_FRAMES - 1;
 
 const samplesLeft = new Float32Array(BUFFERED_FRAMES);

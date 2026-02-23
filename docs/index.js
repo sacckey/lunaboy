@@ -8,6 +8,7 @@ const tmpCanvas = document.createElement('canvas');
 const tmpCanvasContext = tmpCanvas.getContext('2d');
 tmpCanvas.width = canvas.width;
 tmpCanvas.height = canvas.height;
+const MAX_PENDING_AUDIO_BUFFERS = 4;
 
 class AudioPlayer {
   constructor() {
@@ -35,7 +36,10 @@ class AudioPlayer {
     }
 
     this.startingPromise = (async () => {
-      this.context = new window.AudioContext({ sampleRate: 48_000 });
+      this.context = new window.AudioContext({
+        sampleRate: 48_000,
+        latencyHint: 'interactive',
+      });
       await this.context.audioWorklet.addModule('./audio-worklet.js');
       this.processor = new AudioWorkletNode(
         this.context,
@@ -85,7 +89,7 @@ class AudioPlayer {
       return;
     }
     this.pendingBuffers.push(buffer);
-    if (this.pendingBuffers.length > 64) {
+    if (this.pendingBuffers.length > MAX_PENDING_AUDIO_BUFFERS) {
       this.pendingBuffers.shift();
     }
   }
