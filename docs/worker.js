@@ -116,11 +116,8 @@ class Lunaboy {
   }
 
   drainAudio() {
-    while (true) {
-      const sampleLength = this.exports.pop_audio_extern();
-      if (sampleLength <= 0) {
-        break;
-      }
+    const sampleLength = this.exports.pop_audio_extern();
+    if (sampleLength > 0) {
       this.sendAudio(sampleLength);
     }
   }
