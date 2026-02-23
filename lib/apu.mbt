@@ -83,7 +83,7 @@ fn Apu::write_sample(
 ///|
 fn Apu::swap_buffers(self : Self) -> Unit {
   self.ready_buffer = self.write_buffer
-  self.write_buffer = if self.write_buffer == 0 { 1 } else { 0 }
+  self.write_buffer = self.write_buffer ^ 1
 }
 
 ///|
