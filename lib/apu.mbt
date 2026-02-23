@@ -10,6 +10,7 @@ const SAMPLE_PERIOD_T_CYCLES : Int = 4_194_304 / SAMPLE_RATE
 ///|
 const FS_PERIOD_T_CYCLES : Int = 0x2000
 
+///|
 const MASTER_GAIN : Float = 0.1
 
 ///|
